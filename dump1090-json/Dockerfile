@@ -5,7 +5,7 @@ RUN pip3 install poetry==1.1.5
 RUN poetry config virtualenvs.create false
 RUN poetry install --no-dev
 RUN pip install coloredlogs python-dateutil
-RUN apt-get install python3-pandas
+RUN apt-get install -y python3-pandas
 COPY ./dump1090-json_pub_sub.py .
 ENTRYPOINT ["python3", "dump1090-json_pub_sub.py"]
 
