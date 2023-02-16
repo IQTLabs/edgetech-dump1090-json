@@ -25,26 +25,23 @@ coloredlogs.install(level=logging.INFO, fmt='%(asctime)s.%(msecs)03d \033[0;90m%
 class dump1090PubSub(BaseMQTTPubSub):
     """This class creates a connection to the MQTT broker and to the SBS1 socket on a
     piaware or dump1090 instance and publishes aircraft track json messages to an MQTT topic
-
     Args:
         BaseMQTTPubSub (BaseMQTTPubSub): parent class written in the EdgeTech Core module
     """
     __mqtt_broker: str = ""
     __mqtt_port: int = 0
     __dump1090_host: str = ""
-    __dump1090_http_port: int = 0
-    __dump1090_sock: socket.socket = None
+    __dump1090_http_port: str = ""
 
     def __init__(
         self: Any,
         dump1090_host: str,
-        dump1090_http_port: str = '8080',
+        dump1090_http_port: str,
         send_data_topic: str,
         debug: bool = False,
         **kwargs: Any,
     ):
         """The SBS1PubSub constructor takes a dump1090 IP and port
-
         Args:
             dump1090_host (str): host IP of the dump1090 system
             dump1090_port (int): host port of the dump1090 socket
@@ -80,10 +77,11 @@ class dump1090PubSub(BaseMQTTPubSub):
             timestamp = tmpData['now']
             data = pd.read_json(json.dumps(tmpData['aircraft']))
             dataoriginal = data
-            for colname in keepCols:
-                if colname not in data.columns:
-                    keepCols.remove(colname)
-            data = data[keepCols]
+            columnsOut = []
+            for colname in data.columns:
+                if colname in keepCols:
+                    columnsOut.append(colname)
+            data = data[columnsOut]
             data = data[~pd.isna(data.lat)]
             data = data.fillna(0)
             if 'geom_rate' in data.columns:
@@ -109,39 +107,38 @@ class dump1090PubSub(BaseMQTTPubSub):
 
 
     def processMessages(self, data):
-        for aircraft in data.hex:
-            tmp = data.loc[data.hex==aircraft]
-            if "alt_geom" not in tmp.columns:
-                continue
-            dataOut = {}
-            dataOut["icao_hex"] = tmp.hex.values[0]
-            dataOut["time"] = str(tmp.time.values[0])
-            dataOut["lat"] = tmp.lat.values[0]
-            dataOut["lon"] = tmp.lon.values[0]
-            dataOut["altitude"] = tmp.alt_geom.values[0]
-            dataOut["horizontal_velocity"] = tmp.gs.values[0]
-            dataOut["track"] = tmp.track.values[0]
-            if "baro_rate" in tmp.columns:
-                dataOut["vertical_velocity"] = tmp.baro_rate.values[0]
-            else:
-                if "geom_rate" in tmp.columns:
-                    dataOut["vertical_velocity"] = tmp.geom_rate.values[0]
+        if ~data.empty:
+            for aircraft in data.hex:
+                tmp = data.loc[data.hex==aircraft]
+                if "alt_geom" not in tmp.columns:
+                    continue
+                dataOut = {}
+                dataOut["icao_hex"] = tmp.hex.values[0]
+                dataOut["time"] = str(tmp.time.values[0])
+                dataOut["lat"] = tmp.lat.values[0]
+                dataOut["lon"] = tmp.lon.values[0]
+                dataOut["altitude"] = tmp.alt_geom.values[0]
+                dataOut["horizontal_velocity"] = tmp.gs.values[0]
+                dataOut["track"] = tmp.track.values[0]
+                if "baro_rate" in tmp.columns:
+                    dataOut["vertical_velocity"] = tmp.baro_rate.values[0]
                 else:
-                    dataOut["vertical_velocity"] = 0
-            if "flight" in tmp.columns:
-                dataOut["flight"] = tmp.flight.values[0]
-            if "squawk" in tmp.columns:
-                dataOut["squawk"] = tmp.squawk.values[0]
-            #dataOut["onGround"] = tmp.hex
-            self._send_data(dataOut)
+                    if "geom_rate" in tmp.columns:
+                        dataOut["vertical_velocity"] = tmp.geom_rate.values[0]
+                    else:
+                        dataOut["vertical_velocity"] = 0
+                if "flight" in tmp.columns:
+                    dataOut["flight"] = tmp.flight.values[0]
+                if "squawk" in tmp.columns:
+                    dataOut["squawk"] = tmp.squawk.values[0]
+                #dataOut["onGround"] = tmp.hex
+                self._send_data(dataOut)
 
     def _send_data(self: Any, data: Dict[str, str]) -> bool:
         """Leverages edgetech-core functionality to publish a JSON payload to the MQTT
         broker on the topic specified in the class constructor.
-
         Args:
             data (Dict[str, str]): Dictionary payload that maps keys to payload.
-
         Returns:
             bool: Returns True if successful publish else False.
         """
@@ -183,7 +180,7 @@ class dump1090PubSub(BaseMQTTPubSub):
             self.publish_heartbeat, payload="Dump1090 Sender Heartbeat"
         )
         schedule.every(1).seconds.do(
-            self.self.processAircraft()
+            self.processAircraft
         )
 
         while True:
@@ -203,7 +200,7 @@ if __name__ == "__main__":
     sender = dump1090PubSub(
         send_data_topic=str(os.environ.get("JSON_OUTPUT_TOPIC")),
         dump1090_host=str(os.environ.get("DUMP1090_HOST")),
-        dump1090_web_port=str(os.environ.get("DUMP1090_HTTP_PORT")),
+        dump1090_http_port=str(os.environ.get("DUMP1090_HTTP_PORT")),
         mqtt_ip=str(os.environ.get("MQTT_IP")),
     )
     sender.main()
