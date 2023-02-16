@@ -1,0 +1,16 @@
+[tool.poetry]
+name = "sbs1"
+version = "0.1.0"
+description = "MQTT client to read SBS1 messages from Dump1090 and publish them as a JSON to an MQTT topic"
+authors = ["IQT Labs <labsinfo@iqt.org>"]
+license = "Apache 2.0"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+schedule = "^1.1.0"
+
+[tool.poetry.dev-dependencies]
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
