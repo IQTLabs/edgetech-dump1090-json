@@ -82,6 +82,8 @@ class dump1090PubSub(BaseMQTTPubSub):
                 if colname in keepCols:
                     columnsOut.append(colname)
             data = data[columnsOut]
+            if 'lat' not in data.columns:
+                return False
             data = data[~pd.isna(data.lat)]
             data = data.fillna(0)
             if 'geom_rate' in data.columns:
