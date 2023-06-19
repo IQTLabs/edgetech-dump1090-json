@@ -127,3 +127,8 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Local
+.bashrc
+dump1090-json.env
+base_mqtt_pub_sub.py
