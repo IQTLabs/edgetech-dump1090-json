@@ -1,11 +1,14 @@
 FROM iqtlabs/edgetech-core
+
 COPY pyproject.toml .
 COPY poetry.lock .
 RUN pip3 install poetry==1.1.5
 RUN poetry config virtualenvs.create false
 RUN poetry install --no-dev
-RUN pip install coloredlogs python-dateutil pandas
+
+# TODO: Copy in base class from GitHub
 COPY ./dump1090-json_pub_sub.py .
 ENTRYPOINT ["python3", "dump1090-json_pub_sub.py"]
 
+# TODO: Review
 ## docker run -it --network host --device /dev/ttyACM0:/dev/serial0 <container name>
