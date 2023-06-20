@@ -2,17 +2,18 @@
 of BaseMQTTPubSub.  The dump1090PubSub reads data from a specified
 socket and publishes it to the MQTT broker.
 """
-import os
-from time import sleep
-import json
-from datetime import datetime
-from typing import *
-import schedule
-
 import coloredlogs
+from datetime import datetime
+import json
 import logging
-import requests
+import os
+import schedule
+import sys
+from time import sleep
+from typing import *
+
 import pandas as pd
+import requests
 
 from base_mqtt_pub_sub import BaseMQTTPubSub
 
@@ -86,6 +87,16 @@ class dump1090PubSub(BaseMQTTPubSub):
         # broker
         self.publish_registration("Dump1090 Sender Registration")
 
+        # Log configuration parameters
+        logging.info(
+            f"""dump1090PubSub initialized with parameters:
+    dump1090_host = {dump1090_host}
+    dump1090_http_port = {dump1090_http_port}
+    send_data_topic = {send_data_topic}
+    debug = {debug}
+            """
+        )
+
     def processAircraft(self):
         url = f"http://{self.__dump1090_host}:{self.__dump1090_http_port}/skyaware/data/aircraft.json"
         keepCols = [
@@ -139,6 +150,7 @@ class dump1090PubSub(BaseMQTTPubSub):
             # baro_offset = data.loc[data.hex==tmp,'alt_geom'] - data.loc[data.hex==tmp,'alt_baro']
             # print(list(baro_offset)[0])
             # data.alt_geom = data.alt_baro+baro_offset
+            logging.debug(f"processAircraft created data: {data}")
             self.processMessages(data)
         except Exception as e:
             logging.error(f"Could not process frame | {e}")
@@ -170,6 +182,7 @@ class dump1090PubSub(BaseMQTTPubSub):
                 if "squawk" in tmp.columns:
                     dataOut["squawk"] = tmp.squawk.values[0]
                 # dataOut["onGround"] = tmp.hex
+                logging.debug(f"processMessages produced data: {dataOut}")
                 self._send_data(dataOut)
 
     def _send_data(self: Any, data: Dict[str, str]) -> bool:
@@ -202,16 +215,15 @@ class dump1090PubSub(BaseMQTTPubSub):
 
         # Publish the data as a JSON to the topic
         success = self.publish_to_topic(self.send_data_topic, out_json)
+        if success:
+            logging.info(
+                f"Successfully sent data on channel {self.send_data_topic}: {json.dumps(data)}"
+            )
+        else:
+            logging.info(
+                f"Failed to send data on channel {self.send_data_topic}: {json.dumps(data)}"
+            )
 
-        if self.debug:
-            if success:
-                print(
-                    f"Successfully sent data on channel {self.send_data_topic}: {json.dumps(data)}"
-                )
-            else:
-                print(
-                    f"Failed to send data on channel {self.send_data_topic}: {json.dumps(data)}"
-                )
         # Return True if successful else False
         return success
 
@@ -233,8 +245,8 @@ class dump1090PubSub(BaseMQTTPubSub):
 
             except KeyboardInterrupt as exception:
                 # If keyboard interrupt, fail gracefully
-                if self.debug:
-                    print(exception)
+                logging.debug(exception)
+                sys.exit()
 
 
 if __name__ == "__main__":
