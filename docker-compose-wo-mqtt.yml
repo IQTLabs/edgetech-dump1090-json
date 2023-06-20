@@ -1,16 +1,5 @@
 version: "3"
 services:
-  mqtt:
-    image: iqtlabs/edgetech-mqtt:latest
-    ports:
-      - "1883:1883"
-      - "9001:9001"
-    restart: unless-stopped
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "1M"
-        max-file: "10"
   dump1090-json:
     image: iqtlabs/edgetech-dump1090-json:latest
     build:
@@ -22,7 +11,5 @@ services:
       options:
         max-size: "10M"
         max-file: "10"
-    depends_on: 
-      - mqtt
     env_file:
-      - dump1090-json.env
+      - ./dump1090-json-wo-mqtt.env

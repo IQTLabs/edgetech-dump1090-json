@@ -134,5 +134,4 @@ flycheck_*
 
 # Local
 .bashrc
-dump1090-json.env
 base_mqtt_pub_sub.py
