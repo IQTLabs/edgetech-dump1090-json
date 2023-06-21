@@ -69,6 +69,7 @@ class dump1090PubSub(BaseMQTTPubSub):
             dump1090_port (int): host port of the dump1090 socket
             send_data_topic (str): MQTT topic to publish the data from
                 the port to. Specified via docker-compose.
+            TODO: Remove?
             debug (bool, optional): If the debug mode is turned on,
               log statements print to stdout. Defaults to False.
         """
