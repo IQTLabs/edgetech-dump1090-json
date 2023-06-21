@@ -1,15 +1,15 @@
 [[package]]
 name = "schedule"
-version = "1.1.0"
+version = "1.2.0"
 description = "Job scheduling for humans."
 category = "main"
 optional = false
-python-versions = ">=3.6"
+python-versions = ">=3.7"
 
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.11"
-content-hash = "cbd3488254d0d1664058d2746e0701e935c524c6adc08fce3102e1a45781d13c"
+content-hash = "c8ab7bee2ffcde3ecaea58fd3581cfcd09defdb89f8d22943dc4a158fe1f187f"
 
 [metadata.files]
 schedule = []
