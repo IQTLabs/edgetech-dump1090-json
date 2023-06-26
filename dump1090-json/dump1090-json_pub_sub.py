@@ -145,7 +145,7 @@ class dump1090PubSub(BaseMQTTPubSub):
                 data.gs = data.gs * 0.5144444
             if "squawk" in data.columns:
                 data["squawk"] = data["squawk"].astype(str)
-            data["time"] = float(timestamp) - data.seen
+            data["timestamp"] = float(timestamp) - data.seen
             # TODO: Add in barometric offset to get geometric altitude for those aircraft that do not report it
             # tmp = data.loc[data.alt_geom!=0,'hex'][0]
             # baro_offset = data.loc[data.hex==tmp,'alt_geom'] - data.loc[data.hex==tmp,'alt_baro']
@@ -165,7 +165,7 @@ class dump1090PubSub(BaseMQTTPubSub):
                     continue
                 dataOut = {}
                 dataOut["icao"] = tmp.hex.values[0]
-                dataOut["time"] = str(tmp.time.values[0])
+                dataOut["timestamp"] = str(tmp.timestamp.values[0])
                 dataOut["latitude"] = tmp.lat.values[0]
                 dataOut["longitude"] = tmp.lon.values[0]
                 dataOut["altitude"] = tmp.alt_geom.values[0]
