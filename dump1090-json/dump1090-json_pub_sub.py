@@ -164,7 +164,7 @@ class dump1090PubSub(BaseMQTTPubSub):
                 if "alt_geom" not in tmp.columns:
                     continue
                 dataOut = {}
-                dataOut["icao"] = tmp.hex.values[0]
+                dataOut["icao_hex"] = tmp.hex.values[0]
                 dataOut["timestamp"] = tmp.timestamp.values[0]
                 dataOut["latitude"] = tmp.lat.values[0]
                 dataOut["longitude"] = tmp.lon.values[0]
