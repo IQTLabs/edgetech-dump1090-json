@@ -252,9 +252,9 @@ class dump1090PubSub(BaseMQTTPubSub):
 
 if __name__ == "__main__":
     sender = dump1090PubSub(
-        mqtt_ip=str(os.environ.get("MQTT_IP")),
-        dump1090_host=str(os.environ.get("DUMP1090_HOST")),
-        dump1090_http_port=str(os.environ.get("DUMP1090_HTTP_PORT")),
-        send_data_topic=str(os.environ.get("JSON_OUTPUT_TOPIC")),
+        mqtt_ip=os.environ.get("MQTT_IP", ""),
+        dump1090_host=os.environ.get("DUMP1090_HOST", ""),
+        dump1090_http_port=os.environ.get("DUMP1090_HTTP_PORT", ""),
+        send_data_topic=os.environ.get("JSON_OUTPUT_TOPIC", ""),
     )
     sender.main()
