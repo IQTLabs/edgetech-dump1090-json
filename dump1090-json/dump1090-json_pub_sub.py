@@ -202,7 +202,7 @@ class dump1090PubSub(BaseMQTTPubSub):
         """
         # Generate payload
         payload_json = self.generate_payload_json(
-            push_timestamp=str(int(datetime.utcnow().timestamp())),
+            push_timestamp=int(datetime.utcnow().timestamp()),
             device_type=os.getenv("DEVICE_TYPE", ""),
             id_=os.getenv("HOSTNAME", ""),
             deployment_id=os.getenv("DEPLOYMENT_ID", ""),
