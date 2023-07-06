@@ -249,6 +249,6 @@ if __name__ == "__main__":
         mqtt_ip=os.environ.get("MQTT_IP", ""),
         dump1090_host=os.environ.get("DUMP1090_HOST", ""),
         dump1090_http_port=os.environ.get("DUMP1090_HTTP_PORT", ""),
-        send_data_topic=os.getenv("DUMP1090_SEND_DATA_TOPIC"),
+        send_data_topic=os.getenv("DUMP1090_SEND_DATA_TOPIC", ""),
     )
     sender.main()
