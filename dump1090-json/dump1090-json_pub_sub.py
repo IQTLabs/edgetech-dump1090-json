@@ -1,33 +1,53 @@
-"""This file contains the SBS1PubSub class which is a child class of BaseMQTTPubSub. 
-The SBS1PubSub reads data from a specified socket and publishes it to the MQTT broker.
+"""This file contains the dump1090PubSub class which is a child class
+of BaseMQTTPubSub.  The dump1090PubSub reads data from a specified
+socket and publishes it to the MQTT broker.
 """
-import os
-from time import sleep
-import json
-from datetime import datetime
-from typing import *
-import schedule
-
 import coloredlogs
+from datetime import datetime
+import json
 import logging
-import requests
+import os
+import schedule
+import sys
+from time import sleep
+from typing import *
+
 import pandas as pd
+import requests
 
 from base_mqtt_pub_sub import BaseMQTTPubSub
 
-styles = {'critical': {'bold': True, 'color': 'red'}, 'debug': {'color': 'green'}, 'error': {'color': 'red'}, 'info': {'color': 'white'}, 'notice': {'color': 'magenta'}, 'spam': {'color': 'green', 'faint': True}, 'success': {'bold': True, 'color': 'green'}, 'verbose': {'color': 'blue'}, 'warning': {'color': 'yellow'}}
-coloredlogs.install(level=logging.INFO, fmt='%(asctime)s.%(msecs)03d \033[0;90m%(levelname)-8s '
-                    ''
-                    '\033[0;36m%(filename)-18s%(lineno)3d\033[00m '
-                    '%(message)s',
-                    level_styles = styles)
+STYLES = {
+    "critical": {"bold": True, "color": "red"},
+    "debug": {"color": "green"},
+    "error": {"color": "red"},
+    "info": {"color": "white"},
+    "notice": {"color": "magenta"},
+    "spam": {"color": "green", "faint": True},
+    "success": {"bold": True, "color": "green"},
+    "verbose": {"color": "blue"},
+    "warning": {"color": "yellow"},
+}
+coloredlogs.install(
+    level=logging.INFO,
+    fmt="%(asctime)s.%(msecs)03d \033[0;90m%(levelname)-8s "
+    ""
+    "\033[0;36m%(filename)-18s%(lineno)3d\033[00m "
+    "%(message)s",
+    level_styles=STYLES,
+)
+
 
 class dump1090PubSub(BaseMQTTPubSub):
-    """This class creates a connection to the MQTT broker and to the SBS1 socket on a
-    piaware or dump1090 instance and publishes aircraft track json messages to an MQTT topic
+    """This class creates a connection to the MQTT broker and to the
+    SBS1 socket on a piaware or dump1090 instance and publishes
+    aircraft track json messages to an MQTT topic.
+
     Args:
-        BaseMQTTPubSub (BaseMQTTPubSub): parent class written in the EdgeTech Core module
+        BaseMQTTPubSub (BaseMQTTPubSub): parent class written in the
+            EdgeTech Core module
     """
+
     __mqtt_broker: str = ""
     __mqtt_port: int = 0
     __dump1090_host: str = ""
@@ -41,86 +61,113 @@ class dump1090PubSub(BaseMQTTPubSub):
         debug: bool = False,
         **kwargs: Any,
     ):
-        """The SBS1PubSub constructor takes a dump1090 IP and port
+        """The dump1090PubSub constructor takes a dump1090 IP and
+        port, and MQTT topic.
+
         Args:
             dump1090_host (str): host IP of the dump1090 system
             dump1090_port (int): host port of the dump1090 socket
-            send_data_topic (str): MQTT topic to publish the data from the port to.
-            Specified via docker-compose.
-            debug (bool, optional): If the debug mode is turned on, log statements print to stdout.
-            Defaults to False.
+            send_data_topic (str): MQTT topic to publish the data from
+                the port to. Specified via docker-compose.
+            TODO: Remove?
+            debug (bool, optional): If the debug mode is turned on,
+              log statements print to stdout. Defaults to False.
         """
         super().__init__(**kwargs)
-        # convert contructor parameters to class variables
+        # Convert contructor parameters to class variables
         self.send_data_topic = send_data_topic
         self.debug = debug
         self.__dump1090_host = dump1090_host
         self.__dump1090_http_port = int(dump1090_http_port)
 
-        # connect to the MQTT client
+        # Connect to the MQTT client
         self.connect_client()
         sleep(1)
-        # publish a message after successful connection to the MQTT broker
+
+        # Publish a message after successful connection to the MQTT
+        # broker
         self.publish_registration("Dump1090 Sender Registration")
 
+        # Log configuration parameters
+        logging.info(
+            f"""dump1090PubSub initialized with parameters:
+    dump1090_host = {dump1090_host}
+    dump1090_http_port = {dump1090_http_port}
+    send_data_topic = {send_data_topic}
+    debug = {debug}
+            """
+        )
 
     def processAircraft(self):
-        url = f'http://{self.__dump1090_host}:{self.__dump1090_http_port}/skyaware/data/aircraft.json'
-        keepCols = ['hex', 'lat', 'lon', 'alt_baro', 'alt_geom', 'gs', 'track', 'flight', 'squawk', 'geom_rate', 'baro_rate', 'seen']
+        url = f"http://{self.__dump1090_host}:{self.__dump1090_http_port}/skyaware/data/aircraft.json"
+        keepCols = [
+            "hex",
+            "lat",
+            "lon",
+            "alt_baro",
+            "alt_geom",
+            "gs",
+            "track",
+            "flight",
+            "squawk",
+            "geom_rate",
+            "baro_rate",
+            "seen",
+        ]
         try:
             data = requests.get(url).content
         except Exception as e:
-            logging.error(f'Could not connect to endpoint | {e}')
+            logging.error(f"Could not connect to endpoint | {e}")
             return pd.DataFrame()
         try:
             tmpData = json.loads(data)
-            timestamp = tmpData['now']
-            data = pd.read_json(json.dumps(tmpData['aircraft']))
+            timestamp = tmpData["now"]
+            data = pd.read_json(json.dumps(tmpData["aircraft"]))
             dataoriginal = data
             columnsOut = []
             for colname in data.columns:
                 if colname in keepCols:
                     columnsOut.append(colname)
             data = data[columnsOut]
-            if 'lat' not in data.columns:
+            if "lat" not in data.columns:
                 return pd.DataFrame()
             data = data[~pd.isna(data.lat)]
             data = data.fillna(0)
-            if 'geom_rate' in data.columns:
-                data.geom_rate = data.geom_rate/60*0.3048
-            if 'baro_rate' in data.columns:
-                data.baro_rate = data.baro_rate/60*0.3048
-            if 'alt_geom' in data.columns:
-                data.alt_geom = data.alt_geom*0.3048
-            if 'alt_baro' in data.columns:
-                data.alt_baro = data.alt_baro*0.3048
-            if 'gs' in data.columns:
-                data.gs = data.gs*0.5144444
-            if 'squawk' in data.columns:
-                data['squawk'] = data['squawk'].astype(str)
-            data["time"] = float(timestamp)-data.seen
-            ## TODO: Add in barometric offset to get geometric altitude for those aircraft that do not report it
+            if "geom_rate" in data.columns:
+                data.geom_rate = data.geom_rate / 60 * 0.3048
+            if "baro_rate" in data.columns:
+                data.baro_rate = data.baro_rate / 60 * 0.3048
+            if "alt_geom" in data.columns:
+                data.alt_geom = data.alt_geom * 0.3048
+            if "alt_baro" in data.columns:
+                data.alt_baro = data.alt_baro * 0.3048
+            if "gs" in data.columns:
+                data.gs = data.gs * 0.5144444
+            if "squawk" in data.columns:
+                data["squawk"] = data["squawk"].astype(str)
+            data["timestamp"] = float(timestamp) - data.seen
+            # TODO: Add in barometric offset to get geometric altitude for those aircraft that do not report it
             # tmp = data.loc[data.alt_geom!=0,'hex'][0]
             # baro_offset = data.loc[data.hex==tmp,'alt_geom'] - data.loc[data.hex==tmp,'alt_baro']
             # print(list(baro_offset)[0])
             # data.alt_geom = data.alt_baro+baro_offset
+            logging.debug(f"processAircraft created data: {data}")
             self.processMessages(data)
         except Exception as e:
-            logging.error(f'Could not process frame | {e}')
-            logging.warning(f'System failed: {data}')
-
+            logging.error(f"Could not process frame | {e}")
+            logging.warning(f"System failed: {data}")
 
     def processMessages(self, data):
         if not data.empty:
             for aircraft in data.hex:
-                tmp = data.loc[data.hex==aircraft]
+                tmp = data.loc[data.hex == aircraft]
                 if "alt_geom" not in tmp.columns:
                     continue
                 dataOut = {}
                 dataOut["icao_hex"] = tmp.hex.values[0]
-                dataOut["time"] = str(tmp.time.values[0])
-                dataOut["lat"] = tmp.lat.values[0]
-                dataOut["lon"] = tmp.lon.values[0]
+                dataOut["timestamp"] = tmp.timestamp.values[0]
+                dataOut["latitude"] = tmp.lat.values[0]
+                dataOut["longitude"] = tmp.lon.values[0]
                 dataOut["altitude"] = tmp.alt_geom.values[0]
                 dataOut["horizontal_velocity"] = tmp.gs.values[0]
                 dataOut["track"] = tmp.track.values[0]
@@ -135,20 +182,27 @@ class dump1090PubSub(BaseMQTTPubSub):
                     dataOut["flight"] = tmp.flight.values[0]
                 if "squawk" in tmp.columns:
                     dataOut["squawk"] = tmp.squawk.values[0]
-                #dataOut["onGround"] = tmp.hex
+                # dataOut["onGround"] = tmp.hex
+                logging.debug(f"processMessages produced data: {dataOut}")
                 self._send_data(dataOut)
 
     def _send_data(self: Any, data: Dict[str, str]) -> bool:
-        """Leverages edgetech-core functionality to publish a JSON payload to the MQTT
-        broker on the topic specified in the class constructor.
+        """Leverages edgetech-core functionality to publish a JSON
+        payload to the MQTT broker on the topic specified in the class
+        constructor.
+
         Args:
-            data (Dict[str, str]): Dictionary payload that maps keys to payload.
+            data (Dict[str, str]): Dictionary payload that maps keys
+                to payload
+
         Returns:
-            bool: Returns True if successful publish else False.
+            bool: Returns True if successful publish else False
         """
+        # TODO: Provide fields via environment or command line
         out_json = self.generate_payload_json(
             push_timestamp=str(int(datetime.utcnow().timestamp())),
             device_type="Collector",
+            # TODO: Rename device_id?
             id_="SkyScan-012",
             deployment_id=f"SkyScan-Arlington-Dump1090",
             current_location="-90, -180",
@@ -160,32 +214,29 @@ class dump1090PubSub(BaseMQTTPubSub):
             data_payload=json.dumps(data),
         )
 
-        # publish the data as a JSON to the topic
+        # Publish the data as a JSON to the topic
         success = self.publish_to_topic(self.send_data_topic, out_json)
+        if success:
+            logging.info(
+                f"Successfully sent data on channel {self.send_data_topic}: {json.dumps(data)}"
+            )
+        else:
+            logging.info(
+                f"Failed to send data on channel {self.send_data_topic}: {json.dumps(data)}"
+            )
 
-        if self.debug:
-            if success:
-                print(
-                    f"Successfully sent data on channel {self.send_data_topic}: {json.dumps(data)}"
-                )
-            else:
-                print(
-                    f"Failed to send data on channel {self.send_data_topic}: {json.dumps(data)}"
-                )
-        # return True if successful else False
+        # Return True if successful else False
         return success
 
     def main(self: Any) -> None:
-        """Main loop and function that setup the heartbeat to keep the TCP/IP
-        connection alive and publishes the data to the MQTT broker and keeps the
-        main thread alive.
+        """Main loop and function that setup the heartbeat to keep the
+        TCP/IP connection alive and publishes the data to the MQTT
+        broker and keeps the main thread alive.
         """
         schedule.every(10).seconds.do(
             self.publish_heartbeat, payload="Dump1090 Sender Heartbeat"
         )
-        schedule.every(1).seconds.do(
-            self.processAircraft
-        )
+        schedule.every(1).seconds.do(self.processAircraft)
 
         while True:
             try:
@@ -194,17 +245,16 @@ class dump1090PubSub(BaseMQTTPubSub):
                 sleep(delay)
 
             except KeyboardInterrupt as exception:
-                # if keyboard interrupt, fail gracefully
-                self._disconnect_serial()
-                if self.debug:
-                    print(exception)
+                # If keyboard interrupt, fail gracefully
+                logging.debug(exception)
+                sys.exit()
 
 
 if __name__ == "__main__":
     sender = dump1090PubSub(
-        send_data_topic=str(os.environ.get("JSON_OUTPUT_TOPIC")),
+        mqtt_ip=str(os.environ.get("MQTT_IP")),
         dump1090_host=str(os.environ.get("DUMP1090_HOST")),
         dump1090_http_port=str(os.environ.get("DUMP1090_HTTP_PORT")),
-        mqtt_ip=str(os.environ.get("MQTT_IP")),
+        send_data_topic=str(os.environ.get("JSON_OUTPUT_TOPIC")),
     )
     sender.main()

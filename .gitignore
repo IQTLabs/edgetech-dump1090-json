@@ -127,3 +127,11 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Emacs
+*~
+flycheck_*
+
+# Local
+.bashrc
+base_mqtt_pub_sub.py
