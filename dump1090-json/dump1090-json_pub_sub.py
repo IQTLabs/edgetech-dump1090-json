@@ -56,7 +56,7 @@ class dump1090PubSub(BaseMQTTPubSub):
 
         Args:
             dump1090_host (str): host IP of the dump1090 system
-            dump1090_port (int): host port of the dump1090 socket
+            dump1090_port (str): host port of the dump1090 socket
             send_data_topic (str): MQTT topic to publish the data from
                 the port to. Specified via docker-compose.
             TODO: Remove?
@@ -65,7 +65,7 @@ class dump1090PubSub(BaseMQTTPubSub):
         """
         super().__init__(**kwargs)
         self.dump1090_host = dump1090_host
-        self.dump1090_http_port = int(dump1090_http_port)
+        self.dump1090_http_port = dump1090_http_port
         self.send_data_topic = send_data_topic
         self.debug = debug
 
@@ -89,7 +89,7 @@ class dump1090PubSub(BaseMQTTPubSub):
         and convert to standard units.
         """
         # Request data from the endpoint
-        url = f"http://{self.__dump1090_host}:{self.__dump1090_http_port}/skyaware/data/aircraft.json"
+        url = f"http://{self.dump1090_host}:{self.dump1090_http_port}/skyaware/data/aircraft.json"
         keepCols = [
             "hex",
             "lat",
