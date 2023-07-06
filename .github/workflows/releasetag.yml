@@ -23,7 +23,7 @@ jobs:
       - name: Build Images
         env: 
           # Every folder in the repo that has a Dockerfile within it, comma separated 
-          DOCKERFOLDERS: "daisy"
+          DOCKERFOLDERS: "dump1090-json"
           DOCKERNAMESPACE: ${{ secrets.DOCKER_NAMESPACE }}
           PROJECT_NAME: "edgetech"
           RELEASENAME: ${{ github.event.release.name }}
@@ -46,10 +46,3 @@ jobs:
             echo $RELEASENAME
             docker buildx imagetools create $DOCKERNAMESPACE/$PUBLISHNAME:latest --tag $DOCKERNAMESPACE/$PUBLISHNAME:$RELEASENAME
           done
-
-
-
-
-
-
-
