@@ -2,17 +2,17 @@
 of BaseMQTTPubSub.  The dump1090PubSub reads data from a specified
 socket and publishes it to the MQTT broker.
 """
-import coloredlogs
 from datetime import datetime
 import json
 import logging
 import os
-import schedule
 import sys
 from time import sleep
 from typing import *
 
+import coloredlogs
 import pandas as pd
+import schedule
 import requests
 
 from base_mqtt_pub_sub import BaseMQTTPubSub
@@ -39,19 +39,10 @@ coloredlogs.install(
 
 
 class dump1090PubSub(BaseMQTTPubSub):
-    """This class creates a connection to the MQTT broker and to the
-    SBS1 socket on a piaware or dump1090 instance and publishes
-    aircraft track json messages to an MQTT topic.
-
-    Args:
-        BaseMQTTPubSub (BaseMQTTPubSub): parent class written in the
-            EdgeTech Core module
+    """Creates a connection to the MQTT broker and to the SBS1 socket
+    on a piaware or dump1090 instance and publishes aircraft track
+    messages to an MQTT topic.
     """
-
-    __mqtt_broker: str = ""
-    __mqtt_port: int = 0
-    __dump1090_host: str = ""
-    __dump1090_http_port: str = ""
 
     def __init__(
         self: Any,
@@ -61,12 +52,11 @@ class dump1090PubSub(BaseMQTTPubSub):
         debug: bool = False,
         **kwargs: Any,
     ):
-        """The dump1090PubSub constructor takes a dump1090 IP and
-        port, and MQTT topic.
+        """
 
         Args:
             dump1090_host (str): host IP of the dump1090 system
-            dump1090_port (int): host port of the dump1090 socket
+            dump1090_port (str): host port of the dump1090 socket
             send_data_topic (str): MQTT topic to publish the data from
                 the port to. Specified via docker-compose.
             TODO: Remove?
@@ -74,18 +64,14 @@ class dump1090PubSub(BaseMQTTPubSub):
               log statements print to stdout. Defaults to False.
         """
         super().__init__(**kwargs)
-        # Convert contructor parameters to class variables
+        self.dump1090_host = dump1090_host
+        self.dump1090_http_port = dump1090_http_port
         self.send_data_topic = send_data_topic
         self.debug = debug
-        self.__dump1090_host = dump1090_host
-        self.__dump1090_http_port = int(dump1090_http_port)
 
         # Connect to the MQTT client
         self.connect_client()
         sleep(1)
-
-        # Publish a message after successful connection to the MQTT
-        # broker
         self.publish_registration("Dump1090 Sender Registration")
 
         # Log configuration parameters
@@ -98,8 +84,12 @@ class dump1090PubSub(BaseMQTTPubSub):
             """
         )
 
-    def processAircraft(self):
-        url = f"http://{self.__dump1090_host}:{self.__dump1090_http_port}/skyaware/data/aircraft.json"
+    def _process_aircraft(self):
+        """Process the response from the Dump1090 aircraft end point,
+        and convert to standard units.
+        """
+        # Request data from the endpoint
+        url = f"http://{self.dump1090_host}:{self.dump1090_http_port}/skyaware/data/aircraft.json"
         keepCols = [
             "hex",
             "lat",
@@ -116,9 +106,12 @@ class dump1090PubSub(BaseMQTTPubSub):
         ]
         try:
             data = requests.get(url).content
+
         except Exception as e:
             logging.error(f"Could not connect to endpoint | {e}")
             return pd.DataFrame()
+
+        # Process data from the endpoint
         try:
             tmpData = json.loads(data)
             timestamp = tmpData["now"]
@@ -151,40 +144,49 @@ class dump1090PubSub(BaseMQTTPubSub):
             # baro_offset = data.loc[data.hex==tmp,'alt_geom'] - data.loc[data.hex==tmp,'alt_baro']
             # print(list(baro_offset)[0])
             # data.alt_geom = data.alt_baro+baro_offset
-            logging.debug(f"processAircraft created data: {data}")
-            self.processMessages(data)
+            logging.debug(f"_process_aircraft created data: {data}")
+            self._process_message(data)
+
         except Exception as e:
             logging.error(f"Could not process frame | {e}")
             logging.warning(f"System failed: {data}")
 
-    def processMessages(self, data):
-        if not data.empty:
-            for aircraft in data.hex:
-                tmp = data.loc[data.hex == aircraft]
-                if "alt_geom" not in tmp.columns:
-                    continue
-                dataOut = {}
-                dataOut["icao_hex"] = tmp.hex.values[0]
-                dataOut["timestamp"] = tmp.timestamp.values[0]
-                dataOut["latitude"] = tmp.lat.values[0]
-                dataOut["longitude"] = tmp.lon.values[0]
-                dataOut["altitude"] = tmp.alt_geom.values[0]
-                dataOut["horizontal_velocity"] = tmp.gs.values[0]
-                dataOut["track"] = tmp.track.values[0]
-                if "baro_rate" in tmp.columns:
-                    dataOut["vertical_velocity"] = tmp.baro_rate.values[0]
+    def _process_message(self, data):
+        """Select required data from data returned by the Dump1090 end
+        point.
+
+        Args:
+            data (pd.DataFrame): Data returned by the Dump1090 end
+                point
+        """
+        if data.empty:
+            return
+        for aircraft in data.hex:
+            logging.debug(f"Process data: {data}")
+            tmp = data.loc[data.hex == aircraft]
+            if "alt_geom" not in tmp.columns:
+                continue
+            dataOut = {}
+            dataOut["icao_hex"] = tmp.hex.values[0]
+            dataOut["timestamp"] = tmp.timestamp.values[0]
+            dataOut["latitude"] = tmp.lat.values[0]
+            dataOut["longitude"] = tmp.lon.values[0]
+            dataOut["altitude"] = tmp.alt_geom.values[0]
+            dataOut["horizontal_velocity"] = tmp.gs.values[0]
+            dataOut["track"] = tmp.track.values[0]
+            if "baro_rate" in tmp.columns:
+                dataOut["vertical_velocity"] = tmp.baro_rate.values[0]
+            else:
+                if "geom_rate" in tmp.columns:
+                    dataOut["vertical_velocity"] = tmp.geom_rate.values[0]
                 else:
-                    if "geom_rate" in tmp.columns:
-                        dataOut["vertical_velocity"] = tmp.geom_rate.values[0]
-                    else:
-                        dataOut["vertical_velocity"] = 0
-                if "flight" in tmp.columns:
-                    dataOut["flight"] = tmp.flight.values[0]
-                if "squawk" in tmp.columns:
-                    dataOut["squawk"] = tmp.squawk.values[0]
-                # dataOut["onGround"] = tmp.hex
-                logging.debug(f"processMessages produced data: {dataOut}")
-                self._send_data(dataOut)
+                    dataOut["vertical_velocity"] = 0
+            if "flight" in tmp.columns:
+                dataOut["flight"] = tmp.flight.values[0]
+            if "squawk" in tmp.columns:
+                dataOut["squawk"] = tmp.squawk.values[0]
+            # dataOut["onGround"] = tmp.hex
+            self._send_data(dataOut)
 
     def _send_data(self: Any, data: Dict[str, str]) -> bool:
         """Leverages edgetech-core functionality to publish a JSON
@@ -198,46 +200,39 @@ class dump1090PubSub(BaseMQTTPubSub):
         Returns:
             bool: Returns True if successful publish else False
         """
-        # TODO: Provide fields via environment or command line
-        out_json = self.generate_payload_json(
-            push_timestamp=str(int(datetime.utcnow().timestamp())),
-            device_type="Collector",
-            # TODO: Rename device_id?
-            id_="SkyScan-012",
-            deployment_id=f"SkyScan-Arlington-Dump1090",
-            current_location="-90, -180",
-            status="Debug",
+        # Generate payload
+        payload_json = self.generate_payload_json(
+            push_timestamp=int(datetime.utcnow().timestamp()),
+            device_type=os.getenv("DEVICE_TYPE", ""),
+            id_=os.getenv("HOSTNAME", ""),
+            deployment_id=os.getenv("DEPLOYMENT_ID", ""),
+            current_location=os.getenv("CURRENT_LOCATION", ""),
+            status="Active",
             message_type="Event",
-            model_version="null",
-            firmware_version="v0.0.1",
+            model_version=os.getenv("MODEL_VERSION", ""),
+            firmware_version=os.getenv("FIRMWARE_VERSION", ""),
             data_payload_type="ADS-B",
             data_payload=json.dumps(data),
         )
 
-        # Publish the data as a JSON to the topic
-        success = self.publish_to_topic(self.send_data_topic, out_json)
+        # Publish payload
+        success = self.publish_to_topic(self.send_data_topic, payload_json)
         if success:
             logging.info(
-                f"Successfully sent data on channel {self.send_data_topic}: {json.dumps(data)}"
+                f"Successfully sent data: {data} on topic: {self.send_data_topic}"
             )
         else:
-            logging.info(
-                f"Failed to send data on channel {self.send_data_topic}: {json.dumps(data)}"
+            logging.warning(
+                f"Failed to send data: {data} on topic: {self.send_data_topic}"
             )
-
-        # Return True if successful else False
         return success
 
     def main(self: Any) -> None:
-        """Main loop and function that setup the heartbeat to keep the
-        TCP/IP connection alive and publishes the data to the MQTT
-        broker and keeps the main thread alive.
-        """
+        """Schedules module heartbeat and enters main loop."""
         schedule.every(10).seconds.do(
             self.publish_heartbeat, payload="Dump1090 Sender Heartbeat"
         )
-        schedule.every(1).seconds.do(self.processAircraft)
-
+        schedule.every(1).seconds.do(self._process_aircraft)
         while True:
             try:
                 schedule.run_pending()
@@ -245,16 +240,15 @@ class dump1090PubSub(BaseMQTTPubSub):
                 sleep(delay)
 
             except KeyboardInterrupt as exception:
-                # If keyboard interrupt, fail gracefully
                 logging.debug(exception)
                 sys.exit()
 
 
 if __name__ == "__main__":
     sender = dump1090PubSub(
-        mqtt_ip=str(os.environ.get("MQTT_IP")),
-        dump1090_host=str(os.environ.get("DUMP1090_HOST")),
-        dump1090_http_port=str(os.environ.get("DUMP1090_HTTP_PORT")),
-        send_data_topic=str(os.environ.get("JSON_OUTPUT_TOPIC")),
+        mqtt_ip=os.environ.get("MQTT_IP", ""),
+        dump1090_host=os.environ.get("DUMP1090_HOST", ""),
+        dump1090_http_port=os.environ.get("DUMP1090_HTTP_PORT", ""),
+        send_data_topic=os.getenv("DUMP1090_SEND_DATA_TOPIC", ""),
     )
     sender.main()
