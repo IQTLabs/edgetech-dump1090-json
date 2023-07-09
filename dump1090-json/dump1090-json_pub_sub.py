@@ -130,7 +130,7 @@ class dump1090PubSub(BaseMQTTPubSub):
         # Process data from the response
         self._process_data(data)
 
-    def _process_data(self, inp_data: pd.DataFrame):
+    def _process_data(self, inp_data: pd.DataFrame) -> None:
         """Select and send required data selected from from the
         Dump1090 endpoint response.
 
