@@ -1,6 +1,8 @@
 name: Container Processing
 
-on: [pull_request]
+on: 
+  push:
+  pull_request:
 
 jobs:
 
@@ -27,7 +29,7 @@ jobs:
         version: latest
 
     - name: Docker Login
-      run: echo "${{ secrets.DOCKER_TOKEN }}" | docker login --username "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+      run: echo "${{ secrets.DOCKER_TOKEN }}" | docker login --username "${{ vars.DOCKER_USERNAME }}" --password-stdin
 
     - name: Get Changes
       id: identify
@@ -38,7 +40,7 @@ jobs:
       env: 
         # Every folder in the repo that has a Dockerfile within it, comma separated 
         DOCKER_FOLDERS: "dump1090-json"
-        DOCKER_NAMESPACE: ${{ secrets.DOCKER_NAMESPACE }}
+        DOCKER_NAMESPACE: ${{ vars.DOCKER_NAMESPACE }}
         PROJECT_NAME: "edgetech"
       run: |
         IFS=","
