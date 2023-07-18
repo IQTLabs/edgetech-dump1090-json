@@ -1,6 +1,6 @@
 """This file contains the dump1090PubSub class which is a child class
-of BaseMQTTPubSub.  The dump1090PubSub reads data from a specified
-socket and publishes it to the MQTT broker.
+of BaseMQTTPubSub.  The dump1090PubSub gets data from a specified
+dump1090 endpoint and publishes it to the MQTT broker.
 """
 from datetime import datetime
 import json
@@ -8,7 +8,7 @@ import logging
 import os
 import sys
 from time import sleep
-from typing import *
+from typing import Any, Dict
 
 import coloredlogs
 import pandas as pd
@@ -39,9 +39,8 @@ coloredlogs.install(
 
 
 class dump1090PubSub(BaseMQTTPubSub):
-    """Creates a connection to the MQTT broker and to the SBS1 socket
-    on a piaware or dump1090 instance and publishes aircraft track
-    messages to an MQTT topic.
+    """Gets data from a specified dump1090 endpoint and publishes it
+    to the MQTT broker.
     """
 
     def __init__(
@@ -53,10 +52,11 @@ class dump1090PubSub(BaseMQTTPubSub):
         **kwargs: Any,
     ):
         """
+        Connect to the MQTT broker, and log parameters.
 
         Args:
-            dump1090_host (str): host IP of the dump1090 system
-            dump1090_port (str): host port of the dump1090 socket
+            dump1090_host (str): Host IP of the dump1090 system
+            dump1090_port (str): Host port of the dump1090 socket
             send_data_topic (str): MQTT topic to publish the data from
                 the port to. Specified via docker-compose.
             TODO: Remove?
@@ -84,48 +84,27 @@ class dump1090PubSub(BaseMQTTPubSub):
             """
         )
 
-    def _process_aircraft(self):
-        """Process the response from the Dump1090 aircraft end point,
-        and convert to standard units.
+    def _process_response(self) -> None:
+        """Process the response from the Dump1090 aircraft endpoint,
+        convert to standard units, and process the resulting data.
         """
-        # Request data from the endpoint
+        # Get and load the response from the endpoint
         url = f"http://{self.dump1090_host}:{self.dump1090_http_port}/skyaware/data/aircraft.json"
-        keepCols = [
-            "hex",
-            "lat",
-            "lon",
-            "alt_baro",
-            "alt_geom",
-            "gs",
-            "track",
-            "flight",
-            "squawk",
-            "geom_rate",
-            "baro_rate",
-            "seen",
-        ]
         try:
-            data = requests.get(url).content
+            response = json.loads(requests.get(url).text)
 
         except Exception as e:
-            logging.error(f"Could not connect to endpoint | {e}")
-            return pd.DataFrame()
+            logging.error(f"Could not connect to endpoint or load response | {e}")
+            return
 
-        # Process data from the endpoint
+        # Convert to standard units
         try:
-            tmpData = json.loads(data)
-            timestamp = tmpData["now"]
-            data = pd.read_json(json.dumps(tmpData["aircraft"]))
-            dataoriginal = data
-            columnsOut = []
-            for colname in data.columns:
-                if colname in keepCols:
-                    columnsOut.append(colname)
-            data = data[columnsOut]
+            data = pd.read_json(json.dumps(response["aircraft"]))
             if "lat" not in data.columns:
-                return pd.DataFrame()
+                return
             data = data[~pd.isna(data.lat)]
-            data = data.fillna(0)
+            data = data.fillna(0.0)
+            data["timestamp"] = float(response["now"]) - data.seen
             if "geom_rate" in data.columns:
                 data.geom_rate = data.geom_rate / 60 * 0.3048
             if "baro_rate" in data.columns:
@@ -138,55 +117,60 @@ class dump1090PubSub(BaseMQTTPubSub):
                 data.gs = data.gs * 0.5144444
             if "squawk" in data.columns:
                 data["squawk"] = data["squawk"].astype(str)
-            data["timestamp"] = float(timestamp) - data.seen
             # TODO: Add in barometric offset to get geometric altitude for those aircraft that do not report it
             # tmp = data.loc[data.alt_geom!=0,'hex'][0]
             # baro_offset = data.loc[data.hex==tmp,'alt_geom'] - data.loc[data.hex==tmp,'alt_baro']
             # print(list(baro_offset)[0])
             # data.alt_geom = data.alt_baro+baro_offset
-            logging.debug(f"_process_aircraft created data: {data}")
-            self._process_message(data)
+            logging.debug(f"Processed data from response: {data}")
 
         except Exception as e:
-            logging.error(f"Could not process frame | {e}")
-            logging.warning(f"System failed: {data}")
+            logging.error(f"Could not process response | {e}")
 
-    def _process_message(self, data):
-        """Select required data from data returned by the Dump1090 end
-        point.
+        # Process data from the response
+        self._process_data(data)
+
+    def _process_data(self, inp_data: pd.DataFrame) -> None:
+        """Select and send required data selected from from the
+        Dump1090 endpoint response.
 
         Args:
-            data (pd.DataFrame): Data returned by the Dump1090 end
-                point
+            inp_data (pd.DataFrame): Processed data from the Dump1090
+                endpoint response
         """
-        if data.empty:
+        if inp_data.empty:
             return
-        for aircraft in data.hex:
-            logging.debug(f"Process data: {data}")
-            tmp = data.loc[data.hex == aircraft]
-            if "alt_geom" not in tmp.columns:
-                continue
-            dataOut = {}
-            dataOut["icao_hex"] = tmp.hex.values[0]
-            dataOut["timestamp"] = tmp.timestamp.values[0]
-            dataOut["latitude"] = tmp.lat.values[0]
-            dataOut["longitude"] = tmp.lon.values[0]
-            dataOut["altitude"] = tmp.alt_geom.values[0]
-            dataOut["horizontal_velocity"] = tmp.gs.values[0]
-            dataOut["track"] = tmp.track.values[0]
-            if "baro_rate" in tmp.columns:
-                dataOut["vertical_velocity"] = tmp.baro_rate.values[0]
-            else:
-                if "geom_rate" in tmp.columns:
-                    dataOut["vertical_velocity"] = tmp.geom_rate.values[0]
+        for aircraft in inp_data.hex:
+            try:
+                # Select the first data row for each aircraft
+                vld_data = inp_data.loc[inp_data.hex == aircraft]
+                if "alt_geom" not in vld_data.columns:
+                    continue
+                out_data = {}
+                out_data["icao_hex"] = vld_data.hex.values[0]
+                out_data["timestamp"] = vld_data.timestamp.values[0]
+                out_data["latitude"] = vld_data.lat.values[0]
+                out_data["longitude"] = vld_data.lon.values[0]
+                out_data["altitude"] = vld_data.alt_geom.values[0]
+                out_data["horizontal_velocity"] = vld_data.gs.values[0]
+                out_data["track"] = vld_data.track.values[0]
+                if "baro_rate" in vld_data.columns:
+                    out_data["vertical_velocity"] = vld_data.baro_rate.values[0]
                 else:
-                    dataOut["vertical_velocity"] = 0
-            if "flight" in tmp.columns:
-                dataOut["flight"] = tmp.flight.values[0]
-            if "squawk" in tmp.columns:
-                dataOut["squawk"] = tmp.squawk.values[0]
-            # dataOut["onGround"] = tmp.hex
-            self._send_data(dataOut)
+                    if "geom_rate" in vld_data.columns:
+                        out_data["vertical_velocity"] = vld_data.geom_rate.values[0]
+                    else:
+                        out_data["vertical_velocity"] = 0
+                if "flight" in vld_data.columns:
+                    out_data["flight"] = vld_data.flight.values[0]
+                if "squawk" in vld_data.columns:
+                    out_data["squawk"] = vld_data.squawk.values[0]
+                # out_data["onGround"] = vld_data.hex
+            except Exception as e:
+                logging.error(f"Could not select data | {e}")
+
+            # Send selected data
+            self._send_data(out_data)
 
     def _send_data(self: Any, data: Dict[str, str]) -> bool:
         """Leverages edgetech-core functionality to publish a JSON
@@ -232,7 +216,7 @@ class dump1090PubSub(BaseMQTTPubSub):
         schedule.every(10).seconds.do(
             self.publish_heartbeat, payload="Dump1090 Sender Heartbeat"
         )
-        schedule.every(1).seconds.do(self._process_aircraft)
+        schedule.every(1).seconds.do(self._process_response)
         while True:
             try:
                 schedule.run_pending()
