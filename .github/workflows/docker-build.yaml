@@ -1,6 +1,8 @@
 name: Container Processing
 
-on: pull_request
+on:
+  push:
+    branches: [ "main" ]
 
 jobs:
   build:
@@ -37,7 +39,6 @@ jobs:
     - name: Build image
       env: 
         GITHUB_REPOSITORY: ${{ github.repository }}
-        REPO_TOKEN: ${{ secrets.REPO_TOKEN }}
         DOCKER_FOLDER: "dump1090-json"
         DOCKER_NAMESPACE: ${{ vars.DOCKER_NAMESPACE }}
         TAG_NAME: ${{ steps.get_tag.outputs.IMAGE_TAG }}
