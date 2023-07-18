@@ -12,4 +12,4 @@ services:
         max-size: "10M"
         max-file: "10"
     env_file:
-      - ./dump1090-json-wo-mqtt.env
+      - ./dump1090-json.env
