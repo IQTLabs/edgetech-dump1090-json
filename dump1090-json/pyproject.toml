@@ -19,7 +19,7 @@ flake8 = "^6.0.0"
 mypy = "^1.4.0"
 ipython = "^8.14.0"
 jupyterlab = "^4.0.2"
-notebook = "^6.5.4"
+notebook = "^7.0.0"
 pkgconfig = "^1.5.5"
 types-requests="^2.31.0.0"
 
