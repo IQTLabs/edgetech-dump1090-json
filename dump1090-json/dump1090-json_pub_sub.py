@@ -2,6 +2,7 @@
 of BaseMQTTPubSub.  The dump1090PubSub gets data from a specified
 dump1090 endpoint and publishes it to the MQTT broker.
 """
+import ast
 from datetime import datetime
 import json
 import logging
@@ -30,7 +31,7 @@ STYLES = {
     "warning": {"color": "yellow"},
 }
 coloredlogs.install(
-    level=logging.INFO,
+    level=os.environ.get("LOG_LEVEL", "INFO"),
     fmt="%(asctime)s.%(msecs)03d \033[0;90m%(levelname)-8s "
     ""
     "\033[0;36m%(filename)-18s%(lineno)3d\033[00m "
