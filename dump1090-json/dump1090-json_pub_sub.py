@@ -1,5 +1,5 @@
-"""This file contains the dump1090PubSub class which is a child class
-of BaseMQTTPubSub.  The dump1090PubSub gets data from a specified
+"""This file contains the Dump1090PubSub class which is a child class
+of BaseMQTTPubSub.  The Dump1090PubSub gets data from a specified
 dump1090 endpoint and publishes it to the MQTT broker.
 """
 import ast
@@ -40,7 +40,7 @@ coloredlogs.install(
 )
 
 
-class dump1090PubSub(BaseMQTTPubSub):
+class Dump1090PubSub(BaseMQTTPubSub):
     """Gets data from a specified dump1090 endpoint and publishes it
     to the MQTT broker.
     """
@@ -49,6 +49,7 @@ class dump1090PubSub(BaseMQTTPubSub):
         self: Any,
         dump1090_host: str,
         dump1090_http_port: str,
+        config_topic: str,
         send_data_topic: str,
         continue_on_exception: bool = False,
         **kwargs: Any,
@@ -59,6 +60,8 @@ class dump1090PubSub(BaseMQTTPubSub):
         Args:
             dump1090_host (str): Host IP of the dump1090 system
             dump1090_port (str): Host port of the dump1090 socket
+            config_topic (str): MQTT topic for subscribing to config
+                messages
             send_data_topic (str): MQTT topic to publish the data from
                 the port to. Specified via docker-compose.
             continue_on_exception (bool): Continue on unhandled
@@ -67,6 +70,7 @@ class dump1090PubSub(BaseMQTTPubSub):
         super().__init__(**kwargs)
         self.dump1090_host = dump1090_host
         self.dump1090_http_port = dump1090_http_port
+        self.config_topic = config_topic
         self.send_data_topic = send_data_topic
         self.continue_on_exception = continue_on_exception
 
@@ -76,14 +80,63 @@ class dump1090PubSub(BaseMQTTPubSub):
         self.publish_registration("Dump1090 Sender Registration")
 
         # Log configuration parameters
-        logging.info(
-            f"""dump1090PubSub initialized with parameters:
-    dump1090_host = {dump1090_host}
-    dump1090_http_port = {dump1090_http_port}
-    send_data_topic = {send_data_topic}
-    continue_on_exception = {continue_on_exception}
-            """
+        self._log_config()
+
+    def _config_callback(
+        self,
+        _client: Union[mqtt.Client, None],
+        _userdata: Union[Dict[Any, Any], None],
+        msg: Union[mqtt.MQTTMessage, Dict[Any, Any]],
+    ) -> None:
+        """
+        Process config message.
+
+        Parameters
+        ----------
+        _client: Union[mqtt.Client, None]
+            MQTT client
+        _userdata: Union[Dict[Any, Any], None]
+            Any required user data
+        msg: Union[mqtt.MQTTMessage, Dict[Any, Any]]
+            An MQTT message, or dictionary
+
+        Returns
+        -------
+        None
+        """
+        # Assign data attributes allowed to change during operation,
+        # ignoring config message data without a "dump1090-json" key
+        if type(msg) == mqtt.MQTTMessage:
+            data = self.decode_payload(msg.payload)
+        else:
+            data = msg["data"]
+        if "daisy" not in data:
+            return
+        logging.info(f"Processing config message data: {data}")
+        config = data["dump1090-json"]
+        self.dump1090_host = config.get("dump1090_host", self.dump1090_host)
+        self.dump1090_http_port = config.get(
+            "dump1090_http_port", self.dump1090_http_port
         )
+        self.config_topic = config.get("config_topic", self.config_topic)
+        self.send_data_topic = config.get("send_data_topic", self.send_data_topic)
+        self.continue_on_exception = config.get(
+            "continue_on_exception", self.continue_on_exception
+        )
+
+        # Log configuration parameters
+        self._log_config()
+
+    def _log_config(self: Any) -> None:
+        """Logs all paramters that can be set on construction."""
+        config = {
+            "dump1090_host": self.dump1090_host,
+            "dump1090_http_port": self.dump1090_http_port,
+            "config_topic": self.config_topic,
+            "send_data_topic": self.send_data_topic,
+            "continue_on_exception": self.continue_on_exception,
+        }
+        logging.info(f"Dump1090PubSub configuration:\n{json.dumps(config, indent=4)}")
 
     def _process_response(self) -> None:
         """Process the response from the Dump1090 aircraft endpoint,
@@ -202,10 +255,16 @@ class dump1090PubSub(BaseMQTTPubSub):
 
     def main(self: Any) -> None:
         """Schedules module heartbeat and enters main loop."""
+        # Schedule module heartbeat and response processing
         schedule.every(10).seconds.do(
             self.publish_heartbeat, payload="Dump1090 Sender Heartbeat"
         )
         schedule.every(1).seconds.do(self._process_response)
+
+        # Subscribe to required topics
+        self.add_subscribe_topic(self.config_topic, self._config_callback)
+
+        logging.info("System initialized and running")
         while True:
             try:
                 schedule.run_pending()
@@ -225,14 +284,21 @@ class dump1090PubSub(BaseMQTTPubSub):
                     raise
 
 
-if __name__ == "__main__":
-    sender = dump1090PubSub(
+def make_dump1090() -> Dump1090PubSub:
+    """Instantiate Dump1090PubSub."""
+    return Dump1090PubSub(
         mqtt_ip=os.environ.get("MQTT_IP", ""),
         dump1090_host=os.environ.get("DUMP1090_HOST", ""),
         dump1090_http_port=os.environ.get("DUMP1090_HTTP_PORT", ""),
+        config_topic=os.getenv("CONFIG_TOPIC", ""),
         send_data_topic=os.getenv("DUMP1090_SEND_DATA_TOPIC", ""),
         continue_on_exception=ast.literal_eval(
             os.environ.get("CONTINUE_ON_EXCEPTION", "False")
         ),
     )
-    sender.main()
+
+
+if __name__ == "__main__":
+    # Instantiate Dump1090PubSub and execute
+    dump1090 = make_dump1090()
+    dump1090.main()
