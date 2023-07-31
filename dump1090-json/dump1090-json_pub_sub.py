@@ -10,10 +10,11 @@ import os
 import sys
 from time import sleep
 import traceback
-from typing import Any, Dict
+from typing import Any, Dict, Union
 
 import coloredlogs
 import pandas as pd
+import paho.mqtt.client as mqtt
 import schedule
 import requests
 
@@ -197,7 +198,7 @@ class Dump1090PubSub(BaseMQTTPubSub):
             out_data["longitude"] = vld_data.lon.values[0]
             out_data["altitude"] = vld_data.alt_geom.values[0]
             out_data["horizontal_velocity"] = vld_data.gs.values[0]
-            out_data["track"] = vld_data.track.values[0]
+            out_data["track"] = float(vld_data.track.values[0])
             if "baro_rate" in vld_data.columns:
                 out_data["vertical_velocity"] = vld_data.baro_rate.values[0]
             else:
