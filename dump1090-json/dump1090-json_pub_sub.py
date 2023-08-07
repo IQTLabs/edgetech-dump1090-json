@@ -2,6 +2,7 @@
 of BaseMQTTPubSub.  The dump1090PubSub gets data from a specified
 dump1090 endpoint and publishes it to the MQTT broker.
 """
+import ast
 from datetime import datetime
 import json
 import logging
