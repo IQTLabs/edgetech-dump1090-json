@@ -2,12 +2,14 @@
 of BaseMQTTPubSub.  The dump1090PubSub gets data from a specified
 dump1090 endpoint and publishes it to the MQTT broker.
 """
+import ast
 from datetime import datetime
 import json
 import logging
 import os
 import sys
 from time import sleep
+import traceback
 from typing import Any, Dict
 
 import coloredlogs
@@ -48,7 +50,7 @@ class dump1090PubSub(BaseMQTTPubSub):
         dump1090_host: str,
         dump1090_http_port: str,
         send_data_topic: str,
-        debug: bool = False,
+        continue_on_exception: bool = False,
         **kwargs: Any,
     ):
         """
@@ -59,15 +61,14 @@ class dump1090PubSub(BaseMQTTPubSub):
             dump1090_port (str): Host port of the dump1090 socket
             send_data_topic (str): MQTT topic to publish the data from
                 the port to. Specified via docker-compose.
-            TODO: Remove?
-            debug (bool, optional): If the debug mode is turned on,
-              log statements print to stdout. Defaults to False.
+            continue_on_exception (bool): Continue on unhandled
+                exceptions if True, raise exception if False (the default)
         """
         super().__init__(**kwargs)
         self.dump1090_host = dump1090_host
         self.dump1090_http_port = dump1090_http_port
         self.send_data_topic = send_data_topic
-        self.debug = debug
+        self.continue_on_exception = continue_on_exception
 
         # Connect to the MQTT client
         self.connect_client()
@@ -80,7 +81,7 @@ class dump1090PubSub(BaseMQTTPubSub):
     dump1090_host = {dump1090_host}
     dump1090_http_port = {dump1090_http_port}
     send_data_topic = {send_data_topic}
-    debug = {debug}
+    continue_on_exception = {continue_on_exception}
             """
         )
 
@@ -90,42 +91,33 @@ class dump1090PubSub(BaseMQTTPubSub):
         """
         # Get and load the response from the endpoint
         url = f"http://{self.dump1090_host}:{self.dump1090_http_port}/skyaware/data/aircraft.json"
-        try:
-            response = json.loads(requests.get(url).text)
-
-        except Exception as e:
-            logging.error(f"Could not connect to endpoint or load response | {e}")
-            return
+        response = json.loads(requests.get(url).text)
 
         # Convert to standard units
-        try:
-            data = pd.read_json(json.dumps(response["aircraft"]))
-            if "lat" not in data.columns:
-                return
-            data = data[~pd.isna(data.lat)]
-            data = data.fillna(0.0)
-            data["timestamp"] = float(response["now"]) - data.seen
-            if "geom_rate" in data.columns:
-                data.geom_rate = data.geom_rate / 60 * 0.3048
-            if "baro_rate" in data.columns:
-                data.baro_rate = data.baro_rate / 60 * 0.3048
-            if "alt_geom" in data.columns:
-                data.alt_geom = data.alt_geom * 0.3048
-            if "alt_baro" in data.columns:
-                data.alt_baro = data.alt_baro * 0.3048
-            if "gs" in data.columns:
-                data.gs = data.gs * 0.5144444
-            if "squawk" in data.columns:
-                data["squawk"] = data["squawk"].astype(str)
-            # TODO: Add in barometric offset to get geometric altitude for those aircraft that do not report it
-            # tmp = data.loc[data.alt_geom!=0,'hex'][0]
-            # baro_offset = data.loc[data.hex==tmp,'alt_geom'] - data.loc[data.hex==tmp,'alt_baro']
-            # print(list(baro_offset)[0])
-            # data.alt_geom = data.alt_baro+baro_offset
-            logging.debug(f"Processed data from response: {data}")
-
-        except Exception as e:
-            logging.error(f"Could not process response | {e}")
+        data = pd.read_json(json.dumps(response["aircraft"]))
+        if "lat" not in data.columns:
+            return
+        data = data[~pd.isna(data.lat)]
+        data = data.fillna(0.0)
+        data["timestamp"] = float(response["now"]) - data.seen
+        if "geom_rate" in data.columns:
+            data.geom_rate = data.geom_rate / 60 * 0.3048
+        if "baro_rate" in data.columns:
+            data.baro_rate = data.baro_rate / 60 * 0.3048
+        if "alt_geom" in data.columns:
+            data.alt_geom = data.alt_geom * 0.3048
+        if "alt_baro" in data.columns:
+            data.alt_baro = data.alt_baro * 0.3048
+        if "gs" in data.columns:
+            data.gs = data.gs * 0.5144444
+        if "squawk" in data.columns:
+            data["squawk"] = data["squawk"].astype(str)
+        # TODO: Add in barometric offset to get geometric altitude for those aircraft that do not report it
+        # tmp = data.loc[data.alt_geom!=0,'hex'][0]
+        # baro_offset = data.loc[data.hex==tmp,'alt_geom'] - data.loc[data.hex==tmp,'alt_baro']
+        # print(list(baro_offset)[0])
+        # data.alt_geom = data.alt_baro+baro_offset
+        logging.debug(f"Processed data from response: {data}")
 
         # Process data from the response
         self._process_data(data)
@@ -141,33 +133,30 @@ class dump1090PubSub(BaseMQTTPubSub):
         if inp_data.empty:
             return
         for aircraft in inp_data.hex:
-            try:
-                # Select the first data row for each aircraft
-                vld_data = inp_data.loc[inp_data.hex == aircraft]
-                if "alt_geom" not in vld_data.columns:
-                    continue
-                out_data = {}
-                out_data["icao_hex"] = vld_data.hex.values[0]
-                out_data["timestamp"] = vld_data.timestamp.values[0]
-                out_data["latitude"] = vld_data.lat.values[0]
-                out_data["longitude"] = vld_data.lon.values[0]
-                out_data["altitude"] = vld_data.alt_geom.values[0]
-                out_data["horizontal_velocity"] = vld_data.gs.values[0]
-                out_data["track"] = vld_data.track.values[0]
-                if "baro_rate" in vld_data.columns:
-                    out_data["vertical_velocity"] = vld_data.baro_rate.values[0]
+            # Select the first data row for each aircraft
+            vld_data = inp_data.loc[inp_data.hex == aircraft]
+            if "alt_geom" not in vld_data.columns:
+                continue
+            out_data = {}
+            out_data["icao_hex"] = vld_data.hex.values[0]
+            out_data["timestamp"] = vld_data.timestamp.values[0]
+            out_data["latitude"] = vld_data.lat.values[0]
+            out_data["longitude"] = vld_data.lon.values[0]
+            out_data["altitude"] = vld_data.alt_geom.values[0]
+            out_data["horizontal_velocity"] = vld_data.gs.values[0]
+            out_data["track"] = vld_data.track.values[0]
+            if "baro_rate" in vld_data.columns:
+                out_data["vertical_velocity"] = vld_data.baro_rate.values[0]
+            else:
+                if "geom_rate" in vld_data.columns:
+                    out_data["vertical_velocity"] = vld_data.geom_rate.values[0]
                 else:
-                    if "geom_rate" in vld_data.columns:
-                        out_data["vertical_velocity"] = vld_data.geom_rate.values[0]
-                    else:
-                        out_data["vertical_velocity"] = 0
-                if "flight" in vld_data.columns:
-                    out_data["flight"] = vld_data.flight.values[0]
-                if "squawk" in vld_data.columns:
-                    out_data["squawk"] = vld_data.squawk.values[0]
-                # out_data["onGround"] = vld_data.hex
-            except Exception as e:
-                logging.error(f"Could not select data | {e}")
+                    out_data["vertical_velocity"] = 0
+            if "flight" in vld_data.columns:
+                out_data["flight"] = vld_data.flight.values[0]
+            if "squawk" in vld_data.columns:
+                out_data["squawk"] = vld_data.squawk.values[0]
+            # out_data["onGround"] = vld_data.hex
 
             # Send selected data
             self._send_data(out_data)
@@ -224,8 +213,16 @@ class dump1090PubSub(BaseMQTTPubSub):
                 sleep(delay)
 
             except KeyboardInterrupt as exception:
-                logging.debug(exception)
+                # If keyboard interrupt, fail gracefully
+                logging.warning("Received keyboard interrupt: exiting gracefully")
                 sys.exit()
+
+            except Exception as exception:
+                # Optionally continue on exception
+                if self.continue_on_exception:
+                    traceback.print_exc()
+                else:
+                    raise
 
 
 if __name__ == "__main__":
@@ -234,5 +231,8 @@ if __name__ == "__main__":
         dump1090_host=os.environ.get("DUMP1090_HOST", ""),
         dump1090_http_port=os.environ.get("DUMP1090_HTTP_PORT", ""),
         send_data_topic=os.getenv("DUMP1090_SEND_DATA_TOPIC", ""),
+        continue_on_exception=ast.literal_eval(
+            os.environ.get("CONTINUE_ON_EXCEPTION", "False")
+        ),
     )
     sender.main()
