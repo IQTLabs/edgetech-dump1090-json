@@ -51,7 +51,7 @@ class Dump1090PubSub(BaseMQTTPubSub):
         dump1090_host: str,
         dump1090_http_port: str,
         config_topic: str,
-        send_data_topic: str,
+        dump1090_send_data_topic: str,
         continue_on_exception: bool = False,
         **kwargs: Any,
     ):
@@ -63,7 +63,7 @@ class Dump1090PubSub(BaseMQTTPubSub):
             dump1090_port (str): Host port of the dump1090 socket
             config_topic (str): MQTT topic for subscribing to config
                 messages
-            send_data_topic (str): MQTT topic to publish the data from
+            dump1090_send_data_topic (str): MQTT topic to publish the data from
                 the port to. Specified via docker-compose.
             continue_on_exception (bool): Continue on unhandled
                 exceptions if True, raise exception if False (the default)
@@ -72,7 +72,7 @@ class Dump1090PubSub(BaseMQTTPubSub):
         self.dump1090_host = dump1090_host
         self.dump1090_http_port = dump1090_http_port
         self.config_topic = config_topic
-        self.send_data_topic = send_data_topic
+        self.dump1090_send_data_topic = dump1090_send_data_topic
         self.continue_on_exception = continue_on_exception
 
         # Connect to the MQTT client
@@ -120,7 +120,7 @@ class Dump1090PubSub(BaseMQTTPubSub):
             "dump1090_http_port", self.dump1090_http_port
         )
         self.config_topic = config.get("config_topic", self.config_topic)
-        self.send_data_topic = config.get("send_data_topic", self.send_data_topic)
+        self.dump1090_send_data_topic = config.get("dump1090_send_data_topic", self.dump1090_send_data_topic)
         self.continue_on_exception = config.get(
             "continue_on_exception", self.continue_on_exception
         )
@@ -134,7 +134,7 @@ class Dump1090PubSub(BaseMQTTPubSub):
             "dump1090_host": self.dump1090_host,
             "dump1090_http_port": self.dump1090_http_port,
             "config_topic": self.config_topic,
-            "send_data_topic": self.send_data_topic,
+            "dump1090_send_data_topic": self.dump1090_send_data_topic,
             "continue_on_exception": self.continue_on_exception,
         }
         logging.info(f"Dump1090PubSub configuration:\n{json.dumps(config, indent=4)}")
@@ -243,14 +243,14 @@ class Dump1090PubSub(BaseMQTTPubSub):
         )
 
         # Publish payload
-        success = self.publish_to_topic(self.send_data_topic, payload_json)
+        success = self.publish_to_topic(self.dump1090_send_data_topic, payload_json)
         if success:
             logging.info(
-                f"Successfully sent data: {data} on topic: {self.send_data_topic}"
+                f"Successfully sent data: {data} on topic: {self.dump1090_send_data_topic}"
             )
         else:
             logging.warning(
-                f"Failed to send data: {data} on topic: {self.send_data_topic}"
+                f"Failed to send data: {data} on topic: {self.dump1090_send_data_topic}"
             )
         return success
 
@@ -292,7 +292,7 @@ def make_dump1090() -> Dump1090PubSub:
         dump1090_host=os.environ.get("DUMP1090_HOST", ""),
         dump1090_http_port=os.environ.get("DUMP1090_HTTP_PORT", ""),
         config_topic=os.getenv("CONFIG_TOPIC", ""),
-        send_data_topic=os.getenv("DUMP1090_SEND_DATA_TOPIC", ""),
+        dump1090_send_data_topic=os.getenv("DUMP1090_SEND_DATA_TOPIC", ""),
         continue_on_exception=ast.literal_eval(
             os.environ.get("CONTINUE_ON_EXCEPTION", "False")
         ),
