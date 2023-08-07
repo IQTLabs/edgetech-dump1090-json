@@ -13,8 +13,8 @@ import traceback
 from typing import Any, Dict, Union
 
 import coloredlogs
-import pandas as pd
 import paho.mqtt.client as mqtt
+import pandas as pd
 import schedule
 import requests
 
@@ -83,6 +83,31 @@ class Dump1090PubSub(BaseMQTTPubSub):
         # Log configuration parameters
         self._log_config()
 
+    def decode_payload(
+        self, msg: Union[mqtt.MQTTMessage, str], data_payload_type: str
+    ) -> Dict[Any, Any]:
+        """
+        Decode the payload carried by a message.
+
+        Parameters
+        ----------
+        payload: mqtt.MQTTMessage
+            The MQTT message
+        data_payload_type: str
+            The data payload type
+
+        Returns
+        -------
+        data : Dict[Any, Any]
+            The data payload of the message payload
+        """
+        if type(msg) == mqtt.MQTTMessage:
+            payload = msg.payload.decode()
+        else:
+            payload = msg
+        data_payload = json.loads(payload)[data_payload_type]
+        return json.loads(data_payload)
+
     def _config_callback(
         self,
         _client: Union[mqtt.Client, None],
@@ -107,11 +132,8 @@ class Dump1090PubSub(BaseMQTTPubSub):
         """
         # Assign data attributes allowed to change during operation,
         # ignoring config message data without a "dump1090-json" key
-        if type(msg) == mqtt.MQTTMessage:
-            data = self.decode_payload(msg.payload)
-        else:
-            data = msg["data"]
-        if "daisy" not in data:
+        data = self.decode_payload(msg, "Configuration")
+        if "dump1090-json" not in data:
             return
         logging.info(f"Processing config message data: {data}")
         config = data["dump1090-json"]
@@ -120,7 +142,9 @@ class Dump1090PubSub(BaseMQTTPubSub):
             "dump1090_http_port", self.dump1090_http_port
         )
         self.config_topic = config.get("config_topic", self.config_topic)
-        self.dump1090_send_data_topic = config.get("dump1090_send_data_topic", self.dump1090_send_data_topic)
+        self.dump1090_send_data_topic = config.get(
+            "dump1090_send_data_topic", self.dump1090_send_data_topic
+        )
         self.continue_on_exception = config.get(
             "continue_on_exception", self.continue_on_exception
         )
