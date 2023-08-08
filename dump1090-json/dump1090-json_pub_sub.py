@@ -142,9 +142,7 @@ class Dump1090PubSub(BaseMQTTPubSub):
             "dump1090_http_port", self.dump1090_http_port
         )
         self.config_topic = config.get("config_topic", self.config_topic)
-        self.ads_b_json_topic = config.get(
-            "ads_b_json_topic", self.ads_b_json_topic
-        )
+        self.ads_b_json_topic = config.get("ads_b_json_topic", self.ads_b_json_topic)
         self.continue_on_exception = config.get(
             "continue_on_exception", self.continue_on_exception
         )
