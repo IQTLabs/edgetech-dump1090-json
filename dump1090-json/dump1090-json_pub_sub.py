@@ -50,7 +50,7 @@ class Dump1090PubSub(BaseMQTTPubSub):
         self: Any,
         dump1090_host: str,
         dump1090_http_port: str,
-        config_topic: str,
+        config_json_topic: str,
         ads_b_json_topic: str,
         continue_on_exception: bool = False,
         **kwargs: Any,
@@ -61,7 +61,7 @@ class Dump1090PubSub(BaseMQTTPubSub):
         Args:
             dump1090_host (str): Host IP of the dump1090 system
             dump1090_port (str): Host port of the dump1090 socket
-            config_topic (str): MQTT topic for subscribing to config
+            config_json_topic (str): MQTT topic for subscribing to config
                 messages
             ads_b_json_topic (str): MQTT topic to publish the data from
                 the port to. Specified via docker-compose.
@@ -71,7 +71,7 @@ class Dump1090PubSub(BaseMQTTPubSub):
         super().__init__(**kwargs)
         self.dump1090_host = dump1090_host
         self.dump1090_http_port = dump1090_http_port
-        self.config_topic = config_topic
+        self.config_json_topic = config_json_topic
         self.ads_b_json_topic = ads_b_json_topic
         self.continue_on_exception = continue_on_exception
 
@@ -141,7 +141,7 @@ class Dump1090PubSub(BaseMQTTPubSub):
         self.dump1090_http_port = config.get(
             "dump1090_http_port", self.dump1090_http_port
         )
-        self.config_topic = config.get("config_topic", self.config_topic)
+        self.config_json_topic = config.get("config_json_topic", self.config_json_topic)
         self.ads_b_json_topic = config.get("ads_b_json_topic", self.ads_b_json_topic)
         self.continue_on_exception = config.get(
             "continue_on_exception", self.continue_on_exception
@@ -155,7 +155,7 @@ class Dump1090PubSub(BaseMQTTPubSub):
         config = {
             "dump1090_host": self.dump1090_host,
             "dump1090_http_port": self.dump1090_http_port,
-            "config_topic": self.config_topic,
+            "config_json_topic": self.config_json_topic,
             "ads_b_json_topic": self.ads_b_json_topic,
             "continue_on_exception": self.continue_on_exception,
         }
@@ -285,7 +285,7 @@ class Dump1090PubSub(BaseMQTTPubSub):
         schedule.every(1).seconds.do(self._process_response)
 
         # Subscribe to required topics
-        self.add_subscribe_topic(self.config_topic, self._config_callback)
+        self.add_subscribe_topic(self.config_json_topic, self._config_callback)
 
         logging.info("System initialized and running")
         while True:
@@ -313,7 +313,7 @@ def make_dump1090() -> Dump1090PubSub:
         mqtt_ip=os.environ.get("MQTT_IP", ""),
         dump1090_host=os.environ.get("DUMP1090_HOST", ""),
         dump1090_http_port=os.environ.get("DUMP1090_HTTP_PORT", ""),
-        config_topic=os.getenv("CONFIG_TOPIC", ""),
+        config_json_topic=os.getenv("CONFIG_JSON_TOPIC", ""),
         ads_b_json_topic=os.getenv("ADS_B_JSON_TOPIC", ""),
         continue_on_exception=ast.literal_eval(
             os.environ.get("CONTINUE_ON_EXCEPTION", "False")
