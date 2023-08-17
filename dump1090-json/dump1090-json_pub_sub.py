@@ -27,7 +27,7 @@ class Dump1090PubSub(BaseMQTTPubSub):
     """
 
     def __init__(
-        self: Any,
+        self,
         dump1090_host: str,
         dump1090_http_port: str,
         ads_b_json_topic: str,
@@ -168,7 +168,7 @@ class Dump1090PubSub(BaseMQTTPubSub):
             # Send selected data
             self._send_data(out_data)
 
-    def _send_data(self: Any, data: Dict[str, str]) -> bool:
+    def _send_data(self, data: Dict[str, str]) -> bool:
         """Leverages edgetech-core functionality to publish a JSON
         payload to the MQTT broker on the topic specified in the class
         constructor.
@@ -207,7 +207,7 @@ class Dump1090PubSub(BaseMQTTPubSub):
             )
         return success
 
-    def main(self: Any) -> None:
+    def main(self) -> None:
         """Schedules module heartbeat and enters main loop."""
         # Schedule module heartbeat and response processing
         schedule.every(10).seconds.do(
