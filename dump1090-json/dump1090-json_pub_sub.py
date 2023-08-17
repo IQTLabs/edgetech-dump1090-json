@@ -20,26 +20,6 @@ import requests
 
 from base_mqtt_pub_sub import BaseMQTTPubSub
 
-STYLES = {
-    "critical": {"bold": True, "color": "red"},
-    "debug": {"color": "green"},
-    "error": {"color": "red"},
-    "info": {"color": "white"},
-    "notice": {"color": "magenta"},
-    "spam": {"color": "green", "faint": True},
-    "success": {"bold": True, "color": "green"},
-    "verbose": {"color": "blue"},
-    "warning": {"color": "yellow"},
-}
-coloredlogs.install(
-    level=os.environ.get("LOG_LEVEL", "INFO"),
-    fmt="%(asctime)s.%(msecs)03d \033[0;90m%(levelname)-8s "
-    ""
-    "\033[0;36m%(filename)-18s%(lineno)3d\033[00m "
-    "%(message)s",
-    level_styles=STYLES,
-)
-
 
 class Dump1090PubSub(BaseMQTTPubSub):
     """Gets data from a specified dump1090 endpoint and publishes it
