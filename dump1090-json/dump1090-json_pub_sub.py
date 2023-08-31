@@ -1,5 +1,5 @@
-"""This file contains the dump1090PubSub class which is a child class
-of BaseMQTTPubSub.  The dump1090PubSub gets data from a specified
+"""This file contains the Dump1090PubSub class which is a child class
+of BaseMQTTPubSub.  The Dump1090PubSub gets data from a specified
 dump1090 endpoint and publishes it to the MQTT broker.
 """
 import ast
@@ -10,46 +10,27 @@ import os
 import sys
 from time import sleep
 import traceback
-from typing import Any, Dict
+from typing import Any, Dict, Union
 
 import coloredlogs
+import paho.mqtt.client as mqtt
 import pandas as pd
 import schedule
 import requests
 
 from base_mqtt_pub_sub import BaseMQTTPubSub
 
-STYLES = {
-    "critical": {"bold": True, "color": "red"},
-    "debug": {"color": "green"},
-    "error": {"color": "red"},
-    "info": {"color": "white"},
-    "notice": {"color": "magenta"},
-    "spam": {"color": "green", "faint": True},
-    "success": {"bold": True, "color": "green"},
-    "verbose": {"color": "blue"},
-    "warning": {"color": "yellow"},
-}
-coloredlogs.install(
-    level=logging.INFO,
-    fmt="%(asctime)s.%(msecs)03d \033[0;90m%(levelname)-8s "
-    ""
-    "\033[0;36m%(filename)-18s%(lineno)3d\033[00m "
-    "%(message)s",
-    level_styles=STYLES,
-)
 
-
-class dump1090PubSub(BaseMQTTPubSub):
+class Dump1090PubSub(BaseMQTTPubSub):
     """Gets data from a specified dump1090 endpoint and publishes it
     to the MQTT broker.
     """
 
     def __init__(
-        self: Any,
+        self,
         dump1090_host: str,
         dump1090_http_port: str,
-        send_data_topic: str,
+        ads_b_json_topic: str,
         continue_on_exception: bool = False,
         **kwargs: Any,
     ):
@@ -59,7 +40,7 @@ class dump1090PubSub(BaseMQTTPubSub):
         Args:
             dump1090_host (str): Host IP of the dump1090 system
             dump1090_port (str): Host port of the dump1090 socket
-            send_data_topic (str): MQTT topic to publish the data from
+            ads_b_json_topic (str): MQTT topic to publish the data from
                 the port to. Specified via docker-compose.
             continue_on_exception (bool): Continue on unhandled
                 exceptions if True, raise exception if False (the default)
@@ -67,7 +48,7 @@ class dump1090PubSub(BaseMQTTPubSub):
         super().__init__(**kwargs)
         self.dump1090_host = dump1090_host
         self.dump1090_http_port = dump1090_http_port
-        self.send_data_topic = send_data_topic
+        self.ads_b_json_topic = ads_b_json_topic
         self.continue_on_exception = continue_on_exception
 
         # Connect to the MQTT client
@@ -77,13 +58,39 @@ class dump1090PubSub(BaseMQTTPubSub):
 
         # Log configuration parameters
         logging.info(
-            f"""dump1090PubSub initialized with parameters:
+            f"""Dump1090PubSub initialized with parameters:
     dump1090_host = {dump1090_host}
     dump1090_http_port = {dump1090_http_port}
-    send_data_topic = {send_data_topic}
+    ads_b_json_topic = {ads_b_json_topic}
     continue_on_exception = {continue_on_exception}
             """
         )
+
+    def decode_payload(
+        self, msg: Union[mqtt.MQTTMessage, str], data_payload_type: str
+    ) -> Dict[Any, Any]:
+        """
+        Decode the payload carried by a message.
+
+        Parameters
+        ----------
+        payload: mqtt.MQTTMessage
+            The MQTT message
+        data_payload_type: str
+            The data payload type
+
+        Returns
+        -------
+        data : Dict[Any, Any]
+            The data payload of the message payload
+        """
+        if type(msg) == mqtt.MQTTMessage:
+            payload = msg.payload.decode()
+        else:
+            payload = msg
+        data_payload = json.loads(payload)[data_payload_type]
+        return json.loads(data_payload)
+
 
     def _process_response(self) -> None:
         """Process the response from the Dump1090 aircraft endpoint,
@@ -144,7 +151,7 @@ class dump1090PubSub(BaseMQTTPubSub):
             out_data["longitude"] = vld_data.lon.values[0]
             out_data["altitude"] = vld_data.alt_geom.values[0]
             out_data["horizontal_velocity"] = vld_data.gs.values[0]
-            out_data["track"] = vld_data.track.values[0]
+            out_data["track"] = float(vld_data.track.values[0])
             if "baro_rate" in vld_data.columns:
                 out_data["vertical_velocity"] = vld_data.baro_rate.values[0]
             else:
@@ -161,7 +168,7 @@ class dump1090PubSub(BaseMQTTPubSub):
             # Send selected data
             self._send_data(out_data)
 
-    def _send_data(self: Any, data: Dict[str, str]) -> bool:
+    def _send_data(self, data: Dict[str, str]) -> bool:
         """Leverages edgetech-core functionality to publish a JSON
         payload to the MQTT broker on the topic specified in the class
         constructor.
@@ -189,23 +196,26 @@ class dump1090PubSub(BaseMQTTPubSub):
         )
 
         # Publish payload
-        success = self.publish_to_topic(self.send_data_topic, payload_json)
+        success = self.publish_to_topic(self.ads_b_json_topic, payload_json)
         if success:
             logging.info(
-                f"Successfully sent data: {data} on topic: {self.send_data_topic}"
+                f"Successfully sent data: {data} on topic: {self.ads_b_json_topic}"
             )
         else:
             logging.warning(
-                f"Failed to send data: {data} on topic: {self.send_data_topic}"
+                f"Failed to send data: {data} on topic: {self.ads_b_json_topic}"
             )
         return success
 
-    def main(self: Any) -> None:
+    def main(self) -> None:
         """Schedules module heartbeat and enters main loop."""
+        # Schedule module heartbeat and response processing
         schedule.every(10).seconds.do(
             self.publish_heartbeat, payload="Dump1090 Sender Heartbeat"
         )
         schedule.every(1).seconds.do(self._process_response)
+
+        logging.info("System initialized and running")
         while True:
             try:
                 schedule.run_pending()
@@ -225,14 +235,20 @@ class dump1090PubSub(BaseMQTTPubSub):
                     raise
 
 
-if __name__ == "__main__":
-    sender = dump1090PubSub(
+def make_dump1090() -> Dump1090PubSub:
+    """Instantiate Dump1090PubSub."""
+    return Dump1090PubSub(
         mqtt_ip=os.environ.get("MQTT_IP", ""),
         dump1090_host=os.environ.get("DUMP1090_HOST", ""),
         dump1090_http_port=os.environ.get("DUMP1090_HTTP_PORT", ""),
-        send_data_topic=os.getenv("DUMP1090_SEND_DATA_TOPIC", ""),
+        ads_b_json_topic=os.getenv("ADS_B_JSON_TOPIC", ""),
         continue_on_exception=ast.literal_eval(
             os.environ.get("CONTINUE_ON_EXCEPTION", "False")
         ),
     )
-    sender.main()
+
+
+if __name__ == "__main__":
+    # Instantiate Dump1090PubSub and execute
+    dump1090 = make_dump1090()
+    dump1090.main()
