@@ -1,8 +1,8 @@
 name: Release Tagging
 
-on:
-  push:
-    branches: [ "main" ]
+on: 
+  release:
+    types: [ "published" ]
 
 jobs:
   push_to_registry:
