@@ -74,9 +74,10 @@ As this system is meant to be spun up with MQTT topics you would like to write t
 ```mermaid 
 
 flowchart TD
-    daisy(dAISy) -- dAISy Topic --> mqtt{MQTT}
-    mqtt{MQTT} -- Subscribed to dAISy Topic --> filesaver(Filesaver)
-    mqtt{MQTT} -- Subscribed to dAISy Topic -->  couchdbsaver(CouchDB Saver)
+    dump1090-json(dump1090-json) -- dump1090-json Topic --> mqtt{MQTT}
+    mqtt{MQTT} -- Subscribed to dump1090-json Topic --> filesaver(Filesaver)
+    mqtt{MQTT} -- Subscribed to dump1090-json Topic -->  couchdbsaver(CouchDB Saver)
+    mqtt{MQTT} -- Subscribed to dump1090-json Topic -->  objectledger(Object Ledger)
 
 style mqtt fill:#0072bc,color:#ffffff
 style sbs-1 fill:#80c342,color:#ffffff
