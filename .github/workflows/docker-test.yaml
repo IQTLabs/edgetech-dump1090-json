@@ -24,4 +24,4 @@ jobs:
           context: ${{ env.DOCKER_FOLDER }}
           platforms: linux/arm64,linux/amd64
           push: false
-          tags: ${{ vars.DOCKER_NAMESPACE }}/${{ github.event.repository.name }}:${{ github.event.release.name }}
+          tags: ${{ vars.DOCKER_NAMESPACE }}/${{ github.event.repository.name }}:testing
