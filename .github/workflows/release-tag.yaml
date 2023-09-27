@@ -32,4 +32,6 @@ jobs:
           context: ${{ env.DOCKER_FOLDER }}
           platforms: linux/arm64,linux/amd64
           push: true
-          tags: ${{ vars.DOCKER_NAMESPACE }}/${{ github.event.repository.name }}:${{ github.event.release.name }}
+          tags: |
+            ${{ vars.DOCKER_NAMESPACE }}/${{ github.event.repository.name }}:${{ github.event.release.name }}
+            ${{ vars.DOCKER_NAMESPACE }}/${{ github.event.repository.name }}:${{ github.event.release.name }}
