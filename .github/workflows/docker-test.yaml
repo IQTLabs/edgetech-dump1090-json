@@ -1,8 +1,6 @@
 name: Docker Build Testing
 
-on:
-  push:
-    branches: [ "main" ]
+on: [pull_request, pull_request_target]
 
 jobs:
   push_to_registry:
