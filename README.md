@@ -34,7 +34,7 @@
 <h1 align="center">edgetech-dump1090-json</h1>
 
   <p align="center">
-    This repo builds upon the <a href="https://github.com/IQTLabs/edgetech-core">IQT Labs Edgetech-Core</a> functionality to instantiate an <a href="https://projects.eclipse.org/projects/iot.mosquitto">MQTT</a> client that reads from an aliased serial port and publishes a bytestring delimited by newlines to an MQTT topic. All of this functionality is wrapped in a Docker container for cross-platform compatability. 
+    This repo builds upon the <a href="https://github.com/IQTLabs/edgetech-core">IQT Labs Edgetech-Core</a> functionality to instantiate an <a href="https://projects.eclipse.org/projects/iot.mosquitto">MQTT</a> client that reads aircraft messages from dump1090's web interface JSON file.  It publishes each aircraft to a specified MQTT topic. All of this functionality is wrapped in a Docker container for cross-platform compatability. 
     <br/>
     <br/>
     <a href="https://github.com/IQTLabs/edgetech-dump1090-json/pulls">Make Contribution</a>
@@ -69,19 +69,20 @@ Running this repo requires that you have [Docker](https://www.docker.com) instal
 
 Spinning up this system requires an MQTT server and this container to be included in your `docker-compose.yml`. You can find an example of this workflow in this repository's `docker-compose.yml`. Additionally, some editing of relevant enviornment variables will be required based upon your system's configuration of topics to subscribe to and MQTT configuration. Examples of these enviornment variables can be found in this repository's `.env` file. 
 
-As this system is meant to be spun up with MQTT topics you would like to write to files, copying the sbs-1 `docker-compose` statements into a master `docker-compose.yml` and  `.env` files with your entire system of containers is the preferred workflow. Find an application architecture diagram example of how the usage of this module was envisioned below.
+As this system is meant to be spun up with MQTT topics you would like to write to files, copying the dump1090-json `docker-compose` statements into a master `docker-compose.yml` and  `.env` files with your entire system of containers is the preferred workflow. Find an application architecture diagram example of how the usage of this module was envisioned below.
 
 ```mermaid 
 
 flowchart TD
-    daisy(dAISy) -- dAISy Topic --> mqtt{MQTT}
-    mqtt{MQTT} -- Subscribed to dAISy Topic --> filesaver(Filesaver)
-    mqtt{MQTT} -- Subscribed to dAISy Topic -->  couchdbsaver(CouchDB Saver)
+    dump1090-json(dump1090-json) -- dump1090-json Topic --> mqtt{MQTT}
+    mqtt{MQTT} -- Subscribed to dump1090-json Topic --> filesaver(Filesaver)
+    mqtt{MQTT} -- Subscribed to dump1090-json Topic -->  couchdbsaver(CouchDB Saver)
+    mqtt{MQTT} -- Subscribed to dump1090-json Topic -->  objectledger(Object Ledger)
 
 style mqtt fill:#0072bc,color:#ffffff
-style sbs-1 fill:#80c342,color:#ffffff
 style couchdbsaver fill:#F9D308,color:#ffffff
 style filesaver fill:#F9D308,color:#ffffff
+style objectledger fill:#F9D308,color:#ffffff
 
 ```
 

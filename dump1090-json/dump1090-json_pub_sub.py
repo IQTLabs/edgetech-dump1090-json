@@ -198,7 +198,7 @@ class Dump1090PubSub(BaseMQTTPubSub):
         # Publish payload
         success = self.publish_to_topic(self.ads_b_json_topic, payload_json)
         if success:
-            logging.info(
+            logging.debug(
                 f"Successfully sent data: {data} on topic: {self.ads_b_json_topic}"
             )
         else:
