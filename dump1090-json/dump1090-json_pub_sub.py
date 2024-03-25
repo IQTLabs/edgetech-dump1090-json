@@ -8,7 +8,7 @@ import json
 import logging
 import os
 import sys
-from time import sleep
+from time import sleep, time
 import traceback
 from typing import Any, Dict, Union
 
@@ -96,16 +96,20 @@ class Dump1090PubSub(BaseMQTTPubSub):
         """Process the response from the Dump1090 aircraft endpoint,
         convert to standard units, and process the resulting data.
         """
+
+        request_start = time()
         # Get and load the response from the endpoint
         url = f"http://{self.dump1090_host}:{self.dump1090_http_port}/skyaware/data/aircraft.json"
+        request_time = time() - request_start
         response = json.loads(requests.get(url).text)
-
+        
         # Convert to standard units
         data = pd.read_json(json.dumps(response["aircraft"]))
         if "lat" not in data.columns:
             return
         data = data[~pd.isna(data.lat)]
         data = data.fillna(0.0)
+        data["request_time"] = request_time
         data["timestamp"] = float(response["now"]) - data.seen_pos
         if "geom_rate" in data.columns:
             data.geom_rate = data.geom_rate / 60 * 0.3048
@@ -147,6 +151,7 @@ class Dump1090PubSub(BaseMQTTPubSub):
             out_data = {}
             out_data["icao_hex"] = vld_data.hex.values[0]
             out_data["timestamp"] = vld_data.timestamp.values[0]
+            out_data["request_time"] = vld_data.request_time.values[0]
             out_data["latitude"] = vld_data.lat.values[0]
             out_data["longitude"] = vld_data.lon.values[0]
             out_data["altitude"] = vld_data.alt_geom.values[0]
