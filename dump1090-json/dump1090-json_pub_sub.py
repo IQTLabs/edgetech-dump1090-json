@@ -106,7 +106,7 @@ class Dump1090PubSub(BaseMQTTPubSub):
             return
         data = data[~pd.isna(data.lat)]
         data = data.fillna(0.0)
-        data["timestamp"] = float(response["now"]) - data.seen
+        data["timestamp"] = float(response["now"]) - data.seen_pos
         if "geom_rate" in data.columns:
             data.geom_rate = data.geom_rate / 60 * 0.3048
         if "baro_rate" in data.columns:
