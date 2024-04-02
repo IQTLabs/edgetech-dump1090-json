@@ -129,7 +129,7 @@ class Dump1090PubSub(BaseMQTTPubSub):
         # print(list(baro_offset)[0])
         # data.alt_geom = data.alt_baro+baro_offset
         logging.debug(f"Processed data from response: {data}")
-
+        
         # Process data from the response
         self._process_data(data)
 
@@ -157,10 +157,10 @@ class Dump1090PubSub(BaseMQTTPubSub):
             out_data["altitude"] = vld_data.alt_geom.values[0]
             out_data["horizontal_velocity"] = vld_data.gs.values[0]
             out_data["track"] = float(vld_data.track.values[0])
-            if "baro_rate" in vld_data.columns:
+            if "baro_rate" in vld_data.columns and not pd.isnull(vld_data.baro_rate):
                 out_data["vertical_velocity"] = vld_data.baro_rate.values[0]
             else:
-                if "geom_rate" in vld_data.columns:
+                if "geom_rate" in vld_data.columns and not pd.isnull(vld_data.geom_rate):
                     out_data["vertical_velocity"] = vld_data.geom_rate.values[0]
                 else:
                     out_data["vertical_velocity"] = 0
