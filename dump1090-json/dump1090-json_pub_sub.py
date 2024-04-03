@@ -158,14 +158,11 @@ class Dump1090PubSub(BaseMQTTPubSub):
             out_data["horizontal_velocity"] = vld_data.gs.values[0]
             out_data["track"] = float(vld_data.track.values[0])
             if "geom_rate" in vld_data.columns and "baro_rate" in vld_data.columns and vld_data.geom_rate.values[0] != 0.0:
-                print("geom_rate passed")
                 out_data["vertical_velocity"] = vld_data.geom_rate.values[0]
             else: 
                 if "baro_rate" in vld_data.columns:
-                    print("baro_rate passed")
                     out_data["vertical_velocity"] = vld_data.baro_rate.values[0]
                 else:
-                    print("here")
                     out_data["vertical_velocity"] = 0
             if "flight" in vld_data.columns:
                 out_data["flight"] = vld_data.flight.values[0]
