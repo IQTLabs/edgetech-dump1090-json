@@ -31,6 +31,7 @@ class Dump1090PubSub(BaseMQTTPubSub):
         dump1090_host: str,
         dump1090_http_port: str,
         ads_b_json_topic: str,
+        ground_level: float,
         continue_on_exception: bool = False,
         **kwargs: Any,
     ):
@@ -42,6 +43,7 @@ class Dump1090PubSub(BaseMQTTPubSub):
             dump1090_port (str): Host port of the dump1090 socket
             ads_b_json_topic (str): MQTT topic to publish the data from
                 the port to. Specified via docker-compose.
+            ground_level (float): Altitude of the ground level
             continue_on_exception (bool): Continue on unhandled
                 exceptions if True, raise exception if False (the default)
         """
@@ -49,6 +51,7 @@ class Dump1090PubSub(BaseMQTTPubSub):
         self.dump1090_host = dump1090_host
         self.dump1090_http_port = dump1090_http_port
         self.ads_b_json_topic = ads_b_json_topic
+        self.ground_level = ground_level
         self.continue_on_exception = continue_on_exception
 
         # Connect to the MQTT client
@@ -114,8 +117,10 @@ class Dump1090PubSub(BaseMQTTPubSub):
         if "geom_rate" in data.columns:
             data.geom_rate = data.geom_rate / 60 * 0.3048
         if "baro_rate" in data.columns:
+            df['baro_alt'] = df['baro_alt'].replace('ground', self.ground_level)
             data.baro_rate = data.baro_rate / 60 * 0.3048
         if "alt_geom" in data.columns:
+            df['geom_alt'] = df['geom_alt'].replace('ground', self.ground_level)
             data.alt_geom = data.alt_geom * 0.3048
         if "alt_baro" in data.columns:
             data.alt_baro = data.alt_baro * 0.3048
@@ -247,6 +252,7 @@ def make_dump1090() -> Dump1090PubSub:
         dump1090_host=os.environ.get("DUMP1090_HOST", ""),
         dump1090_http_port=os.environ.get("DUMP1090_HTTP_PORT", ""),
         ads_b_json_topic=os.getenv("ADS_B_JSON_TOPIC", ""),
+        ground_level=os.getenv("GROUND_LEVEL", os.getenv("ALT", 0),
         continue_on_exception=ast.literal_eval(
             os.environ.get("CONTINUE_ON_EXCEPTION", "False")
         ),
