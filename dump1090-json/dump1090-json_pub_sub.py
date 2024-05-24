@@ -117,12 +117,12 @@ class Dump1090PubSub(BaseMQTTPubSub):
         if "geom_rate" in data.columns:
             data.geom_rate = data.geom_rate / 60 * 0.3048
         if "baro_rate" in data.columns:
-            data['baro_alt'] = data['baro_alt'].replace('ground', self.ground_level)
             data.baro_rate = data.baro_rate / 60 * 0.3048
         if "alt_geom" in data.columns:
-            data['geom_alt'] = data['geom_alt'].replace('ground', self.ground_level)
+            data['alt_geom'] = data['alt_geom'].replace('ground', self.ground_level)
             data.alt_geom = data.alt_geom * 0.3048
         if "alt_baro" in data.columns:
+            data['alt_baro'] = data['alt_baro'].replace('ground', self.ground_level)
             data.alt_baro = data.alt_baro * 0.3048
         if "gs" in data.columns:
             data.gs = data.gs * 0.5144444
