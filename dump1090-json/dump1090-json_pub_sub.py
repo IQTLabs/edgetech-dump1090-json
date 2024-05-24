@@ -252,7 +252,7 @@ def make_dump1090() -> Dump1090PubSub:
         dump1090_host=os.environ.get("DUMP1090_HOST", ""),
         dump1090_http_port=os.environ.get("DUMP1090_HTTP_PORT", ""),
         ads_b_json_topic=os.getenv("ADS_B_JSON_TOPIC", ""),
-        ground_level=os.getenv("GROUND_LEVEL", os.getenv("ALT", 0),
+        ground_level=os.getenv("GROUND_LEVEL", os.getenv("ALT", 0)),
         continue_on_exception=ast.literal_eval(
             os.environ.get("CONTINUE_ON_EXCEPTION", "False")
         ),
