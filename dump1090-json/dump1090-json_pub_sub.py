@@ -64,7 +64,7 @@ class Dump1090PubSub(BaseMQTTPubSub):
             f"""Dump1090PubSub initialized with parameters:
     dump1090_host = {dump1090_host}
     dump1090_http_port = {dump1090_http_port}
-    ground_leve = {ground_level}
+    ground_level = {ground_level}
     ads_b_json_topic = {ads_b_json_topic}
     continue_on_exception = {continue_on_exception}
             """
@@ -120,10 +120,10 @@ class Dump1090PubSub(BaseMQTTPubSub):
         if "baro_rate" in data.columns:
             data['baro_rate'] = data['baro_rate'].astype(float) / 60 * 0.3048
         if "alt_geom" in data.columns:
-            data['alt_geom'] = data['alt_geom'].replace('ground', self.ground_level)
+            data.loc[data['alt_baro'] == 'ground', 'alt_geom'] = self.ground_level / 0.3048
             data['alt_geom'] = data['alt_geom'].astype(float) * 0.3048
         if "alt_baro" in data.columns:
-            data['alt_baro'] = data['alt_baro'].replace('ground', self.ground_level)
+            data.loc[data['alt_baro'] == 'ground', 'alt_baro'] = self.ground_level / 0.3048
             data['alt_baro'] = data['alt_baro'].astype(float) * 0.3048
         if "gs" in data.columns:
             data['gs'] = data['gs'].astype(float) * 0.5144444
