@@ -115,17 +115,17 @@ class Dump1090PubSub(BaseMQTTPubSub):
         data["request_time"] = request_time
         data["timestamp"] = float(response["now"]) - data.seen_pos
         if "geom_rate" in data.columns:
-            data.geom_rate = data.geom_rate / 60 * 0.3048
+            data['geom_rate'] = data['geom_rate'].astype(float) / 60 * 0.3048
         if "baro_rate" in data.columns:
-            data.baro_rate = data.baro_rate / 60 * 0.3048
+            data['baro_rate'] = data['baro_rate'].astype(float) / 60 * 0.3048
         if "alt_geom" in data.columns:
             data['alt_geom'] = data['alt_geom'].replace('ground', self.ground_level)
-            data.alt_geom = data.alt_geom * 0.3048
+            data['alt_geom'] = data['alt_geom'].astype(float) * 0.3048
         if "alt_baro" in data.columns:
             data['alt_baro'] = data['alt_baro'].replace('ground', self.ground_level)
-            data.alt_baro = data.alt_baro * 0.3048
+            data['alt_baro'] = data['alt_baro'].astype(float) * 0.3048
         if "gs" in data.columns:
-            data.gs = data.gs * 0.5144444
+            data['gs'] = data['gs'].astype(float) * 0.5144444
         if "squawk" in data.columns:
             data["squawk"] = data["squawk"].astype(str)
         # TODO: Add in barometric offset to get geometric altitude for those aircraft that do not report it
