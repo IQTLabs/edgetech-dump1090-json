@@ -30,6 +30,7 @@ class Dump1090PubSub(BaseMQTTPubSub):
         self,
         dump1090_host: str,
         dump1090_http_port: str,
+        update_time: float,
         ads_b_json_topic: str,
         ground_level: float,
         continue_on_exception: bool = False,
@@ -41,6 +42,7 @@ class Dump1090PubSub(BaseMQTTPubSub):
         Args:
             dump1090_host (str): Host IP of the dump1090 system
             dump1090_port (str): Host port of the dump1090 socket
+            update_time (float): Duration between dump1090 polls
             ads_b_json_topic (str): MQTT topic to publish the data from
                 the port to. Specified via docker-compose.
             ground_level (float): Altitude of the ground level
@@ -50,6 +52,7 @@ class Dump1090PubSub(BaseMQTTPubSub):
         super().__init__(**kwargs)
         self.dump1090_host = dump1090_host
         self.dump1090_http_port = dump1090_http_port
+        self.update_time = update_time
         self.ads_b_json_topic = ads_b_json_topic
         self.ground_level = ground_level
         self.continue_on_exception = continue_on_exception
@@ -224,7 +227,7 @@ class Dump1090PubSub(BaseMQTTPubSub):
         schedule.every(10).seconds.do(
             self.publish_heartbeat, payload="Dump1090 Sender Heartbeat"
         )
-        schedule.every(1).seconds.do(self._process_response)
+        schedule.every(self.update_time).seconds.do(self._process_response)
 
         logging.info("System initialized and running")
         while True:
@@ -252,6 +255,7 @@ def make_dump1090() -> Dump1090PubSub:
         mqtt_ip=os.environ.get("MQTT_IP", ""),
         dump1090_host=os.environ.get("DUMP1090_HOST", ""),
         dump1090_http_port=os.environ.get("DUMP1090_HTTP_PORT", ""),
+        update_time=float(os.getenv("DUMP1090_UPDATE_TIME", 1)),
         ads_b_json_topic=os.getenv("ADS_B_JSON_TOPIC", ""),
         ground_level=float(os.getenv("GROUND_LEVEL", os.getenv("ALT", 0))),
         continue_on_exception=ast.literal_eval(
