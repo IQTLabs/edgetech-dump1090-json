@@ -30,6 +30,7 @@ class Dump1090PubSub(BaseMQTTPubSub):
         self,
         dump1090_host: str,
         dump1090_http_port: str,
+        json_path: str,
         update_time: float,
         ads_b_json_topic: str,
         ground_level: float,
@@ -42,6 +43,7 @@ class Dump1090PubSub(BaseMQTTPubSub):
         Args:
             dump1090_host (str): Host IP of the dump1090 system
             dump1090_port (str): Host port of the dump1090 socket
+            json_path (str): URL path to JSON file
             update_time (float): Duration between dump1090 polls
             ads_b_json_topic (str): MQTT topic to publish the data from
                 the port to. Specified via docker-compose.
@@ -52,6 +54,7 @@ class Dump1090PubSub(BaseMQTTPubSub):
         super().__init__(**kwargs)
         self.dump1090_host = dump1090_host
         self.dump1090_http_port = dump1090_http_port
+        self.json_path = json_path
         self.update_time = update_time
         self.ads_b_json_topic = ads_b_json_topic
         self.ground_level = ground_level
@@ -67,6 +70,7 @@ class Dump1090PubSub(BaseMQTTPubSub):
             f"""Dump1090PubSub initialized with parameters:
     dump1090_host = {dump1090_host}
     dump1090_http_port = {dump1090_http_port}
+    json_path = {json_path}
     ground_level = {ground_level}
     ads_b_json_topic = {ads_b_json_topic}
     continue_on_exception = {continue_on_exception}
@@ -106,7 +110,7 @@ class Dump1090PubSub(BaseMQTTPubSub):
 
         request_start = time()
         # Get and load the response from the endpoint
-        url = f"http://{self.dump1090_host}:{self.dump1090_http_port}/skyaware/data/aircraft.json"
+        url = f"http://{self.dump1090_host}:{self.dump1090_http_port}{json_path}"
         request_time = time() - request_start
         response = json.loads(requests.get(url).text)
         
@@ -255,6 +259,7 @@ def make_dump1090() -> Dump1090PubSub:
         mqtt_ip=os.environ.get("MQTT_IP", ""),
         dump1090_host=os.environ.get("DUMP1090_HOST", ""),
         dump1090_http_port=os.environ.get("DUMP1090_HTTP_PORT", ""),
+        json_path=os.environ.get("JSON_PATH", "/skyaware/data/aircraft.json"),
         update_time=float(os.getenv("DUMP1090_UPDATE_TIME", 1)),
         ads_b_json_topic=os.getenv("ADS_B_JSON_TOPIC", ""),
         ground_level=float(os.getenv("GROUND_LEVEL", os.getenv("ALT", 0))),
