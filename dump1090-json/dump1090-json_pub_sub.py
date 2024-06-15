@@ -110,7 +110,7 @@ class Dump1090PubSub(BaseMQTTPubSub):
 
         request_start = time()
         # Get and load the response from the endpoint
-        url = f"http://{self.dump1090_host}:{self.dump1090_http_port}{json_path}"
+        url = f"http://{self.dump1090_host}:{self.dump1090_http_port}{self.json_path}"
         request_time = time() - request_start
         response = json.loads(requests.get(url).text)
         
