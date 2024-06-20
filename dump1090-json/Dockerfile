@@ -9,6 +9,3 @@ RUN poetry install --without dev
 COPY ./dump1090-json_pub_sub.py .
 
 ENTRYPOINT ["python3", "dump1090-json_pub_sub.py"]
-
-# TODO: Review
-## docker run -it --network host --device /dev/ttyACM0:/dev/serial0 <container name>

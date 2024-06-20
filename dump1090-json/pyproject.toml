@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "dump1090-json"
 version = "0.1.0"
-description = "MQTT client to read SBS1 messages from Dump1090 and publish them as a JSON to an MQTT topic"
+description = "MQTT client to read json file hosted by Dump1090 and publish each object as a JSON to an MQTT topic"
 authors = ["IQT Labs <labsinfo@iqt.org>"]
 license = "Apache 2.0"
 
