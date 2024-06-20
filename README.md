@@ -1,15 +1,15 @@
 <a name="readme-top"></a>
 
-[contributors-shield]: https://img.shields.io/github/contributors/IQTLabs/edgetech-sbs1.svg?style=for-the-badge
-[contributors-url]: https://github.com/IQTLabs/edgetech-sbs1/graphs/contributors
-[forks-shield]: https://img.shields.io/github/forks/IQTLabs/edgetech-sbs1.svg?style=for-the-badge
-[forks-url]: https://github.com/IQTLabs/edgetech-sbs1/network/members
-[stars-shield]: https://img.shields.io/github/stars/IQTLabs/edgetech-sbs1.svg?style=for-the-badge
-[stars-url]: https://github.com/IQTLabs/edgetech-sbs1/stargazers
-[issues-shield]: https://img.shields.io/github/issues/IQTLabs/edgetech-sbs1.svg?style=for-the-badge
-[issues-url]: https://github.com/IQTLabs/edgetech-sbs1/issues
-[license-shield]: https://img.shields.io/github/license/IQTLabs/edgetech-sbs1.svg?style=for-the-badge
-[license-url]: https://github.com/IQTLabs/edgetech-sbs1/blob/master/LICENSE.txt
+[contributors-shield]: https://img.shields.io/github/contributors/IQTLabs/edgetech-dump1090-json.svg?style=for-the-badge
+[contributors-url]: https://github.com/IQTLabs/edgetech-dump1090-json/graphs/contributors
+[forks-shield]: https://img.shields.io/github/forks/IQTLabs/edgetech-dump1090-json.svg?style=for-the-badge
+[forks-url]: https://github.com/IQTLabs/edgetech-dump1090-json/network/members
+[stars-shield]: https://img.shields.io/github/stars/IQTLabs/edgetech-dump1090-json.svg?style=for-the-badge
+[stars-url]: https://github.com/IQTLabs/edgetech-dump1090-json/stargazers
+[issues-shield]: https://img.shields.io/github/issues/IQTLabs/edgetech-dump1090-json.svg?style=for-the-badge
+[issues-url]: https://github.com/IQTLabs/edgetech-dump1090-json/issues
+[license-shield]: https://img.shields.io/github/license/IQTLabs/edgetech-dump1090-json.svg?style=for-the-badge
+[license-url]: https://github.com/IQTLabs/edgetech-dump1090-json/blob/master/LICENSE.txt
 [product-screenshot]: images/screenshot.png
 
 [Python]: https://img.shields.io/badge/python-000000?style=for-the-badge&logo=python
