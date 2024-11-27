@@ -121,6 +121,7 @@ class Dump1090PubSub(BaseMQTTPubSub):
         data = data[~pd.isna(data.lat)]
         data = data.fillna(0.0)
         data["request_time"] = request_time
+        data["on_ground"] = False
         data["timestamp"] = float(response["now"]) - data.seen_pos
         if "geom_rate" in data.columns:
             data['geom_rate'] = data['geom_rate'].astype(float) / 60 * 0.3048
@@ -130,7 +131,7 @@ class Dump1090PubSub(BaseMQTTPubSub):
             data.loc[data['alt_baro'] == 'ground', 'alt_geom'] = self.ground_level / 0.3048
             data['alt_geom'] = data['alt_geom'].astype(float) * 0.3048
         if "alt_baro" in data.columns:
-            data["on_ground"] = data['alt_baro'] == 'ground'
+            data.loc[data['alt_baro'] == 'ground', 'on_ground'] = True
             data.loc[data['alt_baro'] == 'ground', 'alt_baro'] = self.ground_level / 0.3048
             data['alt_baro'] = data['alt_baro'].astype(float) * 0.3048
         if "gs" in data.columns:
