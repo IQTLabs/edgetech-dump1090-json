@@ -3,6 +3,7 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+
 # C extensions
 *.so
 
@@ -134,3 +135,4 @@ dmypy.json
 .bashrc
 base_mqtt_pub_sub.py
 flycheck_*
+dump1090-json/base_mqtt_pub_sub.py
