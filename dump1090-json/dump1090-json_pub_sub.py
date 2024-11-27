@@ -121,7 +121,7 @@ class Dump1090PubSub(BaseMQTTPubSub):
         data = data[~pd.isna(data.lat)]
         data = data.fillna(0.0)
         data["request_time"] = request_time
-        data["on_ground"] = 0
+        data["on_ground"] = False
         data["timestamp"] = float(response["now"]) - data.seen_pos
         if "geom_rate" in data.columns:
             data['geom_rate'] = data['geom_rate'].astype(float) / 60 * 0.3048
@@ -131,20 +131,21 @@ class Dump1090PubSub(BaseMQTTPubSub):
             data.loc[data['alt_baro'] == 'ground', 'alt_geom'] = self.ground_level / 0.3048
             data['alt_geom'] = data['alt_geom'].astype(float) * 0.3048
         if "alt_baro" in data.columns:
-            data.loc[data['alt_baro'] == 'ground', 'on_ground'] = 1
+            data["on_ground"] = data['alt_baro'] == 'ground'
+            #data.loc[data['alt_baro'] == 'ground', 'on_ground'] = True
             data.loc[data['alt_baro'] == 'ground', 'alt_baro'] = self.ground_level / 0.3048
             data['alt_baro'] = data['alt_baro'].astype(float) * 0.3048
         if "gs" in data.columns:
             data['gs'] = data['gs'].astype(float) * 0.5144444
         if "squawk" in data.columns:
             data["squawk"] = data["squawk"].astype(str)
-        data["on_ground"] = data["on_ground"].astype(int)
+        data["on_ground"] = data["on_ground"].astype(bool)
         # TODO: Add in barometric offset to get geometric altitude for those aircraft that do not report it
         # tmp = data.loc[data.alt_geom!=0,'hex'][0]
         # baro_offset = data.loc[data.hex==tmp,'alt_geom'] - data.loc[data.hex==tmp,'alt_baro']
         # print(list(baro_offset)[0])
         # data.alt_geom = data.alt_baro+baro_offset
-        logging.debug(f"Processed data from response: {data}")
+        logging.info(f"Processed data from response: {data}")
         
         # Process data from the response
         self._process_data(data)
