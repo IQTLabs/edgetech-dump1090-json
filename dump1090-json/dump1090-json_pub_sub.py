@@ -130,6 +130,7 @@ class Dump1090PubSub(BaseMQTTPubSub):
             data.loc[data['alt_baro'] == 'ground', 'alt_geom'] = self.ground_level / 0.3048
             data['alt_geom'] = data['alt_geom'].astype(float) * 0.3048
         if "alt_baro" in data.columns:
+            data["on_ground"] = data['alt_baro'] == 'ground'
             data.loc[data['alt_baro'] == 'ground', 'alt_baro'] = self.ground_level / 0.3048
             data['alt_baro'] = data['alt_baro'].astype(float) * 0.3048
         if "gs" in data.columns:
