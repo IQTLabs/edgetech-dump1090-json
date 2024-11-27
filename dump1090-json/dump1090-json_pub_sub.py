@@ -169,6 +169,7 @@ class Dump1090PubSub(BaseMQTTPubSub):
             out_data["latitude"] = vld_data.lat.values[0]
             out_data["longitude"] = vld_data.lon.values[0]
             out_data["altitude"] = vld_data.alt_geom.values[0]
+            out_data["on_ground"] = vld_data.on_ground.values[0]
             out_data["horizontal_velocity"] = vld_data.gs.values[0]
             out_data["track"] = float(vld_data.track.values[0])
             if "geom_rate" in vld_data.columns and "baro_rate" in vld_data.columns and vld_data.geom_rate.values[0] != 0.0:
