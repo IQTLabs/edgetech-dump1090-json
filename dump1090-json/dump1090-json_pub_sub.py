@@ -95,6 +95,7 @@ class Dump1090PubSub(BaseMQTTPubSub):
     json_path = {json_path}
     ground_level = {ground_level}
     ads_b_json_topic = {ads_b_json_topic}
+    ads_b_json_digest_topic = {ads_b_json_digest_topic}
     continue_on_exception = {continue_on_exception}
     tripod_latitude = {tripod_latitude}
     tripod_longitude = {tripod_longitude}
