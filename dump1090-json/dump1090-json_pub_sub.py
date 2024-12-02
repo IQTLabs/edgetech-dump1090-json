@@ -11,7 +11,7 @@ import sys
 from time import sleep, time
 import traceback
 from typing import Any, Dict, Union
-
+from math import radians, cos, sin, asin, sqrt
 import coloredlogs
 import paho.mqtt.client as mqtt
 import pandas as pd
@@ -89,6 +89,9 @@ class Dump1090PubSub(BaseMQTTPubSub):
     ground_level = {ground_level}
     ads_b_json_topic = {ads_b_json_topic}
     continue_on_exception = {continue_on_exception}
+    tripod_latitude = {tripod_latitude}
+    tripod_longitude = {tripod_longitude}
+    max_distance_meters = {max_distance_meters}
             """
         )
 
