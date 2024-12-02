@@ -79,7 +79,7 @@ class Dump1090PubSub(BaseMQTTPubSub):
             raise ValueError("Must specify the ads_b_json_digest_topic or ads_b_json_topic")
     
         if ads_b_json_digest_topic != "" and ads_b_json_topic != "":
-            raise
+            raise ValueError("Must specify only one of the ads_b_json_digest_topic or ads_b_json_topic")
             
 
         # Connect to the MQTT client
