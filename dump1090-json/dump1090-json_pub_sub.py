@@ -35,6 +35,7 @@ class Dump1090PubSub(BaseMQTTPubSub):
         json_path: str,
         update_time: float,
         ads_b_json_topic: str,
+        ads_b_json_digest_topic: str,
         ground_level: float,
         max_distance_meters: int = -1,
         tripod_latitude: float = 0,
@@ -63,6 +64,7 @@ class Dump1090PubSub(BaseMQTTPubSub):
         self.json_path = json_path
         self.update_time = update_time
         self.ads_b_json_topic = ads_b_json_topic
+        self.ads_b_json_digest_topic = ads_b_json_digest_topic
         self.ground_level = ground_level
         self.continue_on_exception = continue_on_exception
         self.earth_radius_km: int = EARTH_RADIUS_KM
@@ -73,7 +75,11 @@ class Dump1090PubSub(BaseMQTTPubSub):
         if max_distance_meters != -1 and (tripod_latitude == 0 or tripod_longitude == 0):
             raise ValueError("If max_distance_meters is set, tripod_latitude and tripod_longitude must be set")
 
-        
+        if ads_b_json_digest_topic == ""or ads_b_json_topic == "":
+            raise ValueError("Must specify the ads_b_json_digest_topic and ads_b_json_topic")
+    
+
+            
 
         # Connect to the MQTT client
         self.connect_client()
@@ -217,6 +223,8 @@ class Dump1090PubSub(BaseMQTTPubSub):
         """
         if inp_data.empty:
             return
+        
+        aircraft_digest_out = []
         for aircraft in inp_data.hex:
             # Select the first data row for each aircraft
             vld_data = inp_data.loc[inp_data.hex == aircraft]
@@ -248,6 +256,7 @@ class Dump1090PubSub(BaseMQTTPubSub):
             # Send selected data
             if self.max_distance_meters == -1:
                 self._send_data(out_data)
+                aircraft_digest_out.append(out_data)
             elif self._relative_distance_meters(
                 self.tripod_latitude,
                 self.tripod_longitude,
@@ -255,6 +264,48 @@ class Dump1090PubSub(BaseMQTTPubSub):
                 out_data["longitude"],
             ) < self.max_distance_meters:
                 self._send_data(out_data)
+                aircraft_digest_out.append(out_data)
+        
+
+    def _send_digest(self, data: Dict[str, str]) -> bool:
+        """Leverages edgetech-core functionality to publish a JSON
+        payload to the MQTT broker on the topic specified in the class
+        constructor.
+
+        Args:
+            data (Dict[str, str]): Dictionary payload that maps keys
+                to payload
+
+        Returns:
+            bool: Returns True if successful publish else False
+        """
+        # Generate payload
+        payload_json = self.generate_payload_json(
+            push_timestamp=int(datetime.utcnow().timestamp()),
+            device_type=os.getenv("DEVICE_TYPE", ""),
+            id_=os.getenv("HOSTNAME", ""),
+            deployment_id=os.getenv("DEPLOYMENT_ID", ""),
+            current_location=os.getenv("CURRENT_LOCATION", ""),
+            status="Active",
+            message_type="Event",
+            model_version=os.getenv("MODEL_VERSION", ""),
+            firmware_version=os.getenv("FIRMWARE_VERSION", ""),
+            data_payload_type="ADS-B",
+            data_payload=json.dumps(data),
+        )
+
+        # Publish payload
+        success = self.publish_to_topic(self.ads_b_json_digest_topic, payload_json)
+        if success:
+            logging.debug(
+                f"Successfully sent data: {data} on topic: {self.ads_b_json_digest_topic}"
+            )
+        else:
+            logging.warning(
+                f"Failed to send data: {data} on topic: {self.ads_b_digest_json_topic}"
+            )
+        return success
+
 
     def _send_data(self, data: Dict[str, str]) -> bool:
         """Leverages edgetech-core functionality to publish a JSON
@@ -333,6 +384,7 @@ def make_dump1090() -> Dump1090PubSub:
         json_path=os.environ.get("JSON_PATH", "/skyaware/data/aircraft.json"),
         update_time=float(os.getenv("DUMP1090_UPDATE_TIME", 1)),
         ads_b_json_topic=os.getenv("ADS_B_JSON_TOPIC", ""),
+        ads_b_json_digest_topic=os.getenv("ADS_B_JSON_DIGEST_TOPIC", ""),
         ground_level=float(os.getenv("GROUND_LEVEL", os.getenv("ALT", 0))),
         max_distance_meters=int(os.getenv("MAX_DISTANCE_METERS", -1)),
         tripod_latitude=float(os.getenv("TRIPOD_LATITUDE", 0)),
