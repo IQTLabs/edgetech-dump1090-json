@@ -75,10 +75,11 @@ class Dump1090PubSub(BaseMQTTPubSub):
         if max_distance_meters != -1 and (tripod_latitude == 0 or tripod_longitude == 0):
             raise ValueError("If max_distance_meters is set, tripod_latitude and tripod_longitude must be set")
 
-        if ads_b_json_digest_topic == ""or ads_b_json_topic == "":
-            raise ValueError("Must specify the ads_b_json_digest_topic and ads_b_json_topic")
+        if ads_b_json_digest_topic == "" and  ads_b_json_topic == "":
+            raise ValueError("Must specify the ads_b_json_digest_topic or ads_b_json_topic")
     
-
+        if ads_b_json_digest_topic != "" and ads_b_json_topic != "":
+            raise
             
 
         # Connect to the MQTT client
@@ -265,7 +266,7 @@ class Dump1090PubSub(BaseMQTTPubSub):
             ) < self.max_distance_meters:
                 self._send_data(out_data)
                 aircraft_digest_out.append(out_data)
-        
+        self._send_digest(aircraft_digest_out)
 
     def _send_digest(self, data: Dict[str, str]) -> bool:
         """Leverages edgetech-core functionality to publish a JSON
