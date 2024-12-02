@@ -20,11 +20,13 @@ import requests
 
 from base_mqtt_pub_sub import BaseMQTTPubSub
 
+EARTH_RADIUS_KM = 6371
 
 class Dump1090PubSub(BaseMQTTPubSub):
     """Gets data from a specified dump1090 endpoint and publishes it
     to the MQTT broker.
     """
+    
 
     def __init__(
         self,
@@ -34,7 +36,11 @@ class Dump1090PubSub(BaseMQTTPubSub):
         update_time: float,
         ads_b_json_topic: str,
         ground_level: float,
+        max_distance_meters: int = -1,
+        tripod_latitude: float = 0,
+        tripod_longitude: float = 0,
         continue_on_exception: bool = False,
+
         **kwargs: Any,
     ):
         """
@@ -59,6 +65,15 @@ class Dump1090PubSub(BaseMQTTPubSub):
         self.ads_b_json_topic = ads_b_json_topic
         self.ground_level = ground_level
         self.continue_on_exception = continue_on_exception
+        self.earth_radius_km: int = EARTH_RADIUS_KM
+        self.max_distance_meters: int = max_distance_meters
+        self.tripod_latitude: float = tripod_latitude
+        self.tripod_longitude: float = tripod_longitude
+
+        if max_distance_meters != -1 and (tripod_latitude == 0 or tripod_longitude == 0):
+            raise ValueError("If max_distance_meters is set, tripod_latitude and tripod_longitude must be set")
+
+        
 
         # Connect to the MQTT client
         self.connect_client()
@@ -101,6 +116,45 @@ class Dump1090PubSub(BaseMQTTPubSub):
             payload = msg
         data_payload = json.loads(payload)[data_payload_type]
         return json.loads(data_payload)
+
+
+    def _relative_distance_meters(
+        self: Any, lat_one: float, lon_one: float, lat_two: float, lon_two: float
+    ) -> float:
+        """gives an Earth-as-a-sphere-based distance approximation using the Haversine formula
+
+        Args:
+            lat_one (float): latitude of coordindate one
+            lon_one (float): longitude of coordindate one
+            lat_two (float): latitude of coordindate two
+            lon_two (float): longitude of coordindate two
+
+        Returns:
+            str: integer distance in metters with the unit abbreviation
+        """
+        lat_one, lon_one, lat_two, lon_two = (
+            radians(lat_one),
+            radians(lon_one),
+            radians(lat_two),
+            radians(lon_two),
+        )
+
+        # Haversine formula
+        return float(
+            (
+                2
+                * asin(
+                    sqrt(
+                        sin((lat_two - lat_one) / 2) ** 2
+                        + cos(lat_one)
+                        * cos(lat_two)
+                        * sin((lon_two - lon_one) / 2) ** 2
+                    )
+                )
+                * self.earth_radius_km
+            )
+            * 1000
+        )
 
 
     def _process_response(self) -> None:
@@ -189,7 +243,15 @@ class Dump1090PubSub(BaseMQTTPubSub):
             # out_data["onGround"] = vld_data.hex
 
             # Send selected data
-            self._send_data(out_data)
+            if self.max_distance_meters == -1:
+                self._send_data(out_data)
+            elif self._relative_distance_meters(
+                self.tripod_latitude,
+                self.tripod_longitude,
+                out_data["latitude"],
+                out_data["longitude"],
+            ) < self.max_distance_meters:
+                self._send_data(out_data)
 
     def _send_data(self, data: Dict[str, str]) -> bool:
         """Leverages edgetech-core functionality to publish a JSON
@@ -260,6 +322,7 @@ class Dump1090PubSub(BaseMQTTPubSub):
 
 def make_dump1090() -> Dump1090PubSub:
     """Instantiate Dump1090PubSub."""
+    
     return Dump1090PubSub(
         mqtt_ip=os.environ.get("MQTT_IP", ""),
         dump1090_host=os.environ.get("DUMP1090_HOST", ""),
@@ -268,6 +331,9 @@ def make_dump1090() -> Dump1090PubSub:
         update_time=float(os.getenv("DUMP1090_UPDATE_TIME", 1)),
         ads_b_json_topic=os.getenv("ADS_B_JSON_TOPIC", ""),
         ground_level=float(os.getenv("GROUND_LEVEL", os.getenv("ALT", 0))),
+        max_distance_meters=int(os.getenv("MAX_DISTANCE_METERS", -1)),
+        tripod_latitude=float(os.getenv("TRIPOD_LATITUDE", 0)),
+        tripod_longitude=float(os.getenv("TRIPOD_LONGITUDE", 0)),
         continue_on_exception=ast.literal_eval(
             os.environ.get("CONTINUE_ON_EXCEPTION", "False")
         ),
