@@ -280,6 +280,9 @@ class Dump1090PubSub(BaseMQTTPubSub):
         Returns:
             bool: Returns True if successful publish else False
         """
+        if self.ads_b_json_digest_topic == "":
+            return False
+        
         # Generate payload
         payload_json = self.generate_payload_json(
             push_timestamp=int(datetime.utcnow().timestamp()),
@@ -320,6 +323,10 @@ class Dump1090PubSub(BaseMQTTPubSub):
         Returns:
             bool: Returns True if successful publish else False
         """
+
+        if self.ads_b_json_topic == "":
+            return False
+
         # Generate payload
         payload_json = self.generate_payload_json(
             push_timestamp=int(datetime.utcnow().timestamp()),
