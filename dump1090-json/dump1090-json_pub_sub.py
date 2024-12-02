@@ -290,7 +290,7 @@ class Dump1090PubSub(BaseMQTTPubSub):
             message_type="Event",
             model_version=os.getenv("MODEL_VERSION", ""),
             firmware_version=os.getenv("FIRMWARE_VERSION", ""),
-            data_payload_type="ADS-B",
+            data_payload_type="ADS-B Digest",
             data_payload=json.dumps(data),
         )
 
