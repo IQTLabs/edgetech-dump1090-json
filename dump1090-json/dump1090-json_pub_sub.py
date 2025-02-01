@@ -188,6 +188,11 @@ class Dump1090PubSub(BaseMQTTPubSub):
         data["request_time"] = request_time
         data["on_ground"] = False
         data["timestamp"] = float(response["now"]) - data.seen_pos
+        # Check if any timestamp is in the future
+        now_ts = float(datetime.now(timezone.utc).timestamp())
+        for idx, row in data.iterrows():
+            if row['timestamp'] > now_ts - row['seen_pos']:
+                logging.info(f"[{row["hex"]} Timestamp is in the future: {row['timestamp']} compared to {now_ts} seen_pos: {row['seen_pos']}")
         # if data["timestamp"] > float(datetime.now(timezone.utc).timestamp()) - float(data.seen_pos):
         #     logging.info(f"Timestamp is in the future: {data['timestamp']} compared to {datetime.now(timezone.utc).timestamp()} seen_pos: {data.seen_pos}")
         if "geom_rate" in data.columns:
