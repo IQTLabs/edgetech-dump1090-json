@@ -3,7 +3,7 @@ of BaseMQTTPubSub.  The Dump1090PubSub gets data from a specified
 dump1090 endpoint and publishes it to the MQTT broker.
 """
 import ast
-from datetime import datetime
+from datetime import datetime, timezone
 import json
 import logging
 import os
@@ -286,7 +286,7 @@ class Dump1090PubSub(BaseMQTTPubSub):
         
         # Generate payload
         payload_json = self.generate_payload_json(
-            push_timestamp=int(datetime.utcnow().timestamp()),
+            push_timestamp=int(datetime.now(timezone.utc).timestamp()),
             device_type=os.getenv("DEVICE_TYPE", ""),
             id_=os.getenv("HOSTNAME", ""),
             deployment_id=os.getenv("DEPLOYMENT_ID", ""),
@@ -330,7 +330,7 @@ class Dump1090PubSub(BaseMQTTPubSub):
 
         # Generate payload
         payload_json = self.generate_payload_json(
-            push_timestamp=int(datetime.utcnow().timestamp()),
+            push_timestamp=int(datetime.now(timezone.utc).timestamp()),
             device_type=os.getenv("DEVICE_TYPE", ""),
             id_=os.getenv("HOSTNAME", ""),
             deployment_id=os.getenv("DEPLOYMENT_ID", ""),
