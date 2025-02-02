@@ -187,14 +187,21 @@ class Dump1090PubSub(BaseMQTTPubSub):
         data = data.fillna(0.0)
         data["request_time"] = request_time
         data["on_ground"] = False
-        data["timestamp"] = float(response["now"]) - data.seen_pos
-        # Check if any timestamp is in the future
-        now_ts = float(datetime.now(timezone.utc).timestamp())
-        for idx, row in data.iterrows():
-            if row['timestamp'] > now_ts - row['seen_pos']:
-                logging.info(f"{row['hex']} - Timestamp is in the future: {row['timestamp']} compared to {now_ts} seen_pos: {row['seen_pos']}")
-        # if data["timestamp"] > float(datetime.now(timezone.utc).timestamp()) - float(data.seen_pos):
-        #     logging.info(f"Timestamp is in the future: {data['timestamp']} compared to {datetime.now(timezone.utc).timestamp()} seen_pos: {data.seen_pos}")
+
+        # This uses the current time from the response to calculate the timestamp
+        # The response seems to round the time to the nearest tenth second, which seems to introduce some error
+        #data["timestamp"] = float(response["now"]) - data.seen_pos
+        
+        # This uses the current time from the system to calculate the timestamp
+        # This timestamp has more decimal places than the response time
+        data["timestamp"] = float(datetime.now(timezone.utc).timestamp()) - data.seen_pos
+
+        # This is not really effective because of rounding errors
+        # # Check if any timestamp is in the future
+        # now_ts = float(datetime.now(timezone.utc).timestamp())
+        # for idx, row in data.iterrows():
+        #     if row['timestamp'] > now_ts - row['seen_pos']:
+        #         logging.info(f"{row['hex']} - Timestamp is in the future: {row['timestamp']} compared to {now_ts} seen_pos: {row['seen_pos']}")
         if "geom_rate" in data.columns:
             data['geom_rate'] = data['geom_rate'].astype(float) / 60 * 0.3048
         if "baro_rate" in data.columns:
