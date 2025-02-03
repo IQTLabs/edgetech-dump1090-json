@@ -190,11 +190,13 @@ class Dump1090PubSub(BaseMQTTPubSub):
 
         # This uses the current time from the response to calculate the timestamp
         # The response seems to round the time to the nearest tenth second, which seems to introduce some error
-        #data["timestamp"] = float(response["now"]) - data.seen_pos
+        data["timestamp"] = float(response["now"]) - data.seen_pos
         
         # This uses the current time from the system to calculate the timestamp
         # This timestamp has more decimal places than the response time
-        data["timestamp"] = float(datetime.now(timezone.utc).timestamp()) - data.seen_pos
+        #data["timestamp"] = float(datetime.now(timezone.utc).timestamp()) - data.seen_pos
+
+        logging.info(f"Response Now vs System Now: {response['now']} vs {datetime.now(timezone.utc).timestamp()} diff: {response['now'] - datetime.now(timezone.utc).timestamp()}")
 
         # This is not really effective because of rounding errors
         # # Check if any timestamp is in the future
