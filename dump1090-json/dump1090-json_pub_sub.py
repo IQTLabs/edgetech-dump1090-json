@@ -216,6 +216,8 @@ class Dump1090PubSub(BaseMQTTPubSub):
             #data.loc[data['alt_baro'] == 'ground', 'on_ground'] = True
             data.loc[data['alt_baro'] == 'ground', 'alt_baro'] = self.ground_level / 0.3048
             data['alt_baro'] = data['alt_baro'].astype(float) * 0.3048
+        if "category" in data.columns:
+            data["category"] = data["category"].astype(str)
         if "gs" in data.columns:
             data['gs'] = data['gs'].astype(float) * 0.5144444
         if "squawk" in data.columns:
