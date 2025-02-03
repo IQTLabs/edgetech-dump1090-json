@@ -218,6 +218,8 @@ class Dump1090PubSub(BaseMQTTPubSub):
             data['alt_baro'] = data['alt_baro'].astype(float) * 0.3048
         if "category" in data.columns:
             data["category"] = data["category"].astype(str)
+        if "emergency" in data.columns:
+            data["emergency"] = data["emergency"].astype(str)
         if "gs" in data.columns:
             data['gs'] = data['gs'].astype(float) * 0.5144444
         if "squawk" in data.columns:
