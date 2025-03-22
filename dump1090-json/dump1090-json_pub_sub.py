@@ -258,7 +258,7 @@ class Dump1090PubSub(BaseMQTTPubSub):
             out_data["request_time"] = vld_data.request_time.values[0]
             out_data["latitude"] = vld_data.lat.values[0]
             out_data["longitude"] = vld_data.lon.values[0]
-            out_data["altitude"] = vld_data.alt_geom.values[0]
+            out_data["altitude"] = vld_data.alt_baro.values[0]
             out_data["on_ground"] = bool(vld_data.on_ground.values[0])
             out_data["horizontal_velocity"] = vld_data.gs.values[0]
             out_data["track"] = float(vld_data.track.values[0])
